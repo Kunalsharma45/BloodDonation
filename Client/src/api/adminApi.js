@@ -86,6 +86,10 @@ export const adminApi = {
         const res = await client.put(`/api/admin/users/${id}/block`);
         return res.data;
     },
+    deleteUser: async (id) => {
+        const res = await client.delete(`/api/admin/users/${id}`);
+        return res.data;
+    },
 
     /**
      * Unblock user
@@ -252,6 +256,52 @@ export const adminApi = {
      */
     getReportInventory: async (params = {}) => {
         const res = await client.get("/api/admin/reports/inventory", { params });
+        return res.data;
+    },
+
+    // Donation Management
+    getDonations: async () => {
+        const res = await client.get("/api/admin/donations");
+        return res.data;
+    },
+
+    createDonation: async (donationData) => {
+        const res = await client.post("/api/admin/donations", donationData);
+        return res.data;
+    },
+
+    updateDonationStage: async (id, stage) => {
+        const res = await client.put(`/api/admin/donations/${id}/stage`, { stage });
+        return res.data;
+    },
+
+    updateDonation: async (id, updates) => {
+        const res = await client.put(`/api/admin/donations/${id}`, updates);
+        return res.data;
+    },
+
+    deleteDonation: async (id) => {
+        const res = await client.delete(`/api/admin/donations/${id}`);
+        return res.data;
+    },
+
+    getDonationStats: async () => {
+        const res = await client.get("/api/admin/donations/stats");
+        return res.data;
+    },
+
+    updateDonationScreening: async (id, screeningData) => {
+        const res = await client.put(`/api/admin/donations/${id}/screening`, screeningData);
+        return res.data;
+    },
+
+    updateDonationCollection: async (id, collectionData) => {
+        const res = await client.put(`/api/admin/donations/${id}/collection`, collectionData);
+        return res.data;
+    },
+
+    updateDonationLabTests: async (id, labTestData) => {
+        const res = await client.put(`/api/admin/donations/${id}/lab-tests`, labTestData);
         return res.data;
     },
 };

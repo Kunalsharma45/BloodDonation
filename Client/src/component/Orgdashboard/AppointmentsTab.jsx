@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import orgApi from "../../api/orgApi";
 import { toast } from "sonner";
 import {
@@ -9,12 +10,15 @@ import {
     CheckCircle,
     XCircle,
     TestTube,
-    FileText
+    FileText,
+    Play
 } from "lucide-react";
 
 const AppointmentsTab = () => {
+    const navigate = useNavigate();
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [startingDonation, setStartingDonation] = useState(null); // Track which appointment is being started
     const [selected, setSelected] = useState(null); // For completion modal
 
     // Completion Form State
@@ -56,6 +60,24 @@ const AppointmentsTab = () => {
             expiryDate: defaultExpiry.toISOString().split('T')[0],
             notes: ""
         });
+    };
+
+    const handleStartDonation = async (appt) => {
+        setStartingDonation(appt._id);
+        try {
+            const response = await orgApi.startDonation(appt._id);
+            toast.success("Donation started! Donor added to pipeline.");
+            fetchAppointments();
+            // Navigate to donation pipeline
+            setTimeout(() => {
+                navigate("/org/donations");
+            }, 1000);
+        } catch (err) {
+            console.error(err);
+            toast.error(err.response?.data?.message || "Failed to start donation");
+        } finally {
+            setStartingDonation(null);
+        }
     };
 
     const handleComplete = async (e) => {
@@ -148,12 +170,30 @@ const AppointmentsTab = () => {
                                         </td>
                                         <td className="p-4">
                                             {appt.status === 'UPCOMING' && (
-                                                <button
-                                                    onClick={() => openCompleteModal(appt)}
-                                                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm transition font-medium"
-                                                >
-                                                    <TestTube size={14} /> Collect
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => handleStartDonation(appt)}
+                                                        disabled={startingDonation === appt._id}
+                                                        className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {startingDonation === appt._id ? (
+                                                            <>
+                                                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                                                Starting...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Play size={14} /> Start Donation
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openCompleteModal(appt)}
+                                                        className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm transition font-medium"
+                                                    >
+                                                        <TestTube size={14} /> Quick Collect
+                                                    </button>
+                                                </div>
                                             )}
                                         </td>
                                     </tr>

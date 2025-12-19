@@ -12,6 +12,7 @@ import {
     User,
     Info
 } from 'lucide-react';
+import BookAppointmentModal from './BookAppointmentModal';
 import {
     getUrgencyColor,
     getStatusColor,
@@ -24,6 +25,7 @@ import { toast } from 'sonner';
 
 const RequestDetailModal = ({ request, isOpen, onClose, onExpressInterest, isInterested }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showBookingModal, setShowBookingModal] = useState(false);
 
     if (!isOpen || !request) return null;
 
@@ -224,31 +226,51 @@ const RequestDetailModal = ({ request, isOpen, onClose, onExpressInterest, isInt
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex gap-3">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-                        >
-                            Close
-                        </button>
-                        {!isInterested ? (
+                    <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
+                        <div className="flex gap-3 mb-3">
                             <button
-                                onClick={handleExpressInterest}
-                                disabled={isSubmitting}
-                                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                onClick={onClose}
+                                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
                             >
-                                <Heart className="w-5 h-5" />
-                                {isSubmitting ? 'Processing...' : 'I Can Donate'}
+                                Close
                             </button>
-                        ) : (
-                            <div className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2">
-                                <Heart className="w-5 h-5 fill-current" />
-                                Interest Expressed
-                            </div>
-                        )}
+                            {!isInterested ? (
+                                <button
+                                    onClick={handleExpressInterest}
+                                    disabled={isSubmitting}
+                                    className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    <Heart className="w-5 h-5" />
+                                    {isSubmitting ? 'Processing...' : 'I Can Donate'}
+                                </button>
+                            ) : (
+                                <div className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2">
+                                    <Heart className="w-5 h-5 fill-current" />
+                                    Interest Expressed
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setShowBookingModal(true)}
+                            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Calendar className="w-5 h-5" />
+                            Book Appointment
+                        </button>
                     </div>
                 </div>
             </div>
+
+            {/* Book Appointment Modal */}
+            <BookAppointmentModal
+                isOpen={showBookingModal}
+                onClose={() => setShowBookingModal(false)}
+                request={request}
+                onSuccess={() => {
+                    setShowBookingModal(false);
+                    onClose();
+                }}
+            />
         </div>
     );
 };

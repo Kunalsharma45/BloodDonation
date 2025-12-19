@@ -113,19 +113,31 @@ router.get("/appointments", auth([ROLES.DONOR]), async (req, res) => {
 router.post("/appointments", auth([ROLES.DONOR]), async (req, res) => {
   try {
     const { organizationId, dateTime, requestId } = req.body;
+    console.log('[DONOR] Booking appointment:', { organizationId, dateTime, requestId, donorId: req.user.userId });
+
     if (!organizationId || !dateTime) {
       return res.status(400).json({ message: "organizationId and dateTime are required" });
     }
+
+    // Validate organizationId exists
+    const org = await User.findById(organizationId);
+    if (!org) {
+      console.error('[DONOR] Organization not found:', organizationId);
+      return res.status(404).json({ message: "Organization not found" });
+    }
+
     const appt = await Appointment.create({
       donorId: req.user.userId,
       organizationId,
       requestId,
       dateTime,
     });
+
+    console.log('[DONOR] Appointment created successfully:', appt._id);
     res.status(201).json(appt);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error('[DONOR] Error creating appointment:', err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 

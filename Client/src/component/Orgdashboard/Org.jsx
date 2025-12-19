@@ -12,6 +12,7 @@ import AnalyticsTab from './AnalyticsTab';
 import ProfileTab from './ProfileTab';
 import MyRequestsPage from './MyRequestsPage';
 import IncomingRequestsPage from './IncomingRequestsPage';
+import DonationPipelineTab from './DonationPipelineTab';
 import NotificationDropdown from '../DonorDashboard/NotificationDropdown';
 import { getOrgTypeLabel } from './orgUtils';
 
@@ -43,6 +44,7 @@ const Org = () => {
                             <Route index element={<Navigate to="dashboard" replace />} />
                             <Route path="dashboard" element={<OrgOverview />} />
                             <Route path="inventory" element={<InventoryView />} />
+                            <Route path="donations" element={<DonationPipelineTab />} />
                             <Route path="requests" element={<MyRequestsPage />} />
                             <Route path="incoming" element={<IncomingRequestsPage />} />
                             <Route path="appointments" element={<AppointmentsTab />} />

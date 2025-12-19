@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import client from '../../api/client';
+import orgApi from '../../api/orgApi';
 import { useAuth } from '../../context/AuthContext';
 import { Package, AlertTriangle, Calendar, FileText, Inbox, TrendingUp, Clock } from 'lucide-react';
 import { getOrgPermissions, getOrgTypeLabel, getOrgTypeBadgeColor } from './orgUtils';
@@ -66,8 +66,8 @@ const OrgOverview = () => {
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            const res = await client.get('/api/org/dashboard');
-            setDashboardData(res.data);
+            const data = await orgApi.getDashboard();
+            setDashboardData(data);
         } catch (err) {
             console.error('Failed to fetch dashboard data:', err);
         } finally {
@@ -152,6 +152,52 @@ const OrgOverview = () => {
                     />
                 )}
             </div>
+
+            {/* Donation Pipeline (Blood Banks only) */}
+            {permissions.canManageDonations && (
+                <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <Package className="text-red-600" size={20} />
+                            Donation Pipeline
+                        </h2>
+                        <button
+                            onClick={() => navigate('/org/donations')}
+                            className="text-sm font-medium text-red-600 hover:text-red-700"
+                        >
+                            View Full Pipeline →
+                        </button>
+                    </div>
+
+                    {/* Compact 5-stage preview */}
+                    <div className="grid grid-cols-5 gap-3">
+                        {[
+                            { title: 'New Donors', color: 'from-red-50 to-red-100/50', count: 0 },
+                            { title: 'Screening', color: 'from-blue-50 to-blue-100/50', count: 0 },
+                            { title: 'In Progress', color: 'from-yellow-50 to-yellow-100/50', count: 0 },
+                            { title: 'Completed', color: 'from-green-50 to-green-100/50', count: 0 },
+                            { title: 'Ready for Storage', color: 'from-purple-50 to-purple-100/50', count: 0 }
+                        ].map((stage, index) => (
+                            <div
+                                key={index}
+                                className={`rounded-lg p-4 bg-gradient-to-br ${stage.color} border border-gray-100`}
+                            >
+                                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                                    {stage.title}
+                                </div>
+                                <div className="text-2xl font-bold text-gray-800">{stage.count}</div>
+                                <div className="text-xs text-gray-500 mt-1">donations</div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mt-4 text-center">
+                        <p className="text-sm text-gray-500">
+                            Full drag-and-drop pipeline available on the Donation Pipeline page
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Two-column layout for requests */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

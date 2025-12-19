@@ -16,6 +16,7 @@ import geoRoutes from "./Router/geo.js";
 import healthRoutes from "./Router/health.js";
 import notificationRoutes from "./Router/notification.js";
 import requestRoutes from "./Router/requests-complete.js";
+import donationRoutes from "./Router/donation.js";
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use("/api", auth);
 app.use("/api", ForgotPassword);
 app.use("/api/donor", donorRoutes);
 app.use("/api/org", orgRoutes);
+app.use("/api/admin/donations", donationRoutes); // More specific route first
 app.use("/api/admin", adminRoutes);
 app.use("/api/geo", geoRoutes);
 app.use("/api/requests", requestRoutes);

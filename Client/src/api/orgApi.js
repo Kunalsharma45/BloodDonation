@@ -1,6 +1,16 @@
 import client from "./client";
 
 export const orgApi = {
+    // Dashboard
+    getDashboard: async () => {
+        const res = await client.get("/api/org/dashboard");
+        return res.data;
+    },
+    getAnalytics: async () => {
+        const res = await client.get("/api/org/analytics");
+        return res.data;
+    },
+
     // Inventory
     getInventory: async () => {
         const res = await client.get("/api/org/inventory");
@@ -62,6 +72,10 @@ export const orgApi = {
     },
     completeAppointment: async (id, data) => { // data: { unitsCollected, notes, ... }
         const res = await client.put(`/api/org/appointments/${id}/complete`, data);
+        return res.data;
+    },
+    startDonation: async (appointmentId) => {
+        const res = await client.post(`/api/org/appointments/${appointmentId}/start-donation`);
         return res.data;
     },
 

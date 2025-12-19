@@ -1,10 +1,13 @@
 import { createContext, useContext, useState, useEffect, useMemo } from "react";
 import client from "../api/client";
 import adminApi from "../api/adminApi";
+import { useAuth } from "./AuthContext";
 
 const DashboardContext = createContext(null);
 
 export const DashboardProvider = ({ children }) => {
+  // Get authentication state
+  const { user, loading: authLoading } = useAuth();
 
   // Ensure children is valid
   if (!children) {
@@ -271,19 +274,37 @@ export const DashboardProvider = ({ children }) => {
     }
   };
 
+  // Fetch donations from backend
+  const fetchDonations = async () => {
+    try {
+      const data = await adminApi.getDonations();
+      setDonationColumns(data);
+      console.log("✅ [DashboardContext] Donations fetched successfully");
+    } catch (err) {
+      console.error("Failed to fetch donations:", err);
+    }
+  };
 
-  // Fetch data from backend on mount - ONLY if user has an auth token
+
+  // Fetch data reactively when user authentication state changes
   useEffect(() => {
-    // Only fetch if there's an access token (user is logged in)
+    // Wait for auth to finish loading first
+    if (authLoading) {
+      console.log('⏳ [DashboardContext] Waiting for auth to load...');
+      return;
+    }
+
+    // Check if user is authenticated (has token and user object)
     const token = localStorage.getItem('accessToken');
 
-    if (token) {
-      console.log('📊 [DashboardContext] Token found, fetching dashboard data');
+    if (user && token) {
+      console.log('📊 [DashboardContext] User authenticated, fetching dashboard data');
       fetchDashboardData();
+      fetchDonations(); // Fetch donations from backend
     } else {
-      console.log('⏭️ [DashboardContext] No token found, skipping data fetch');
+      console.log('⏭️ [DashboardContext] No authenticated user, skipping data fetch');
     }
-  }, []); // Empty dependency array - only run on mount
+  }, [user, authLoading]); // React to changes in user authentication state
 
 
   return (
@@ -307,6 +328,7 @@ export const DashboardProvider = ({ children }) => {
         setSettings,
         totalUnits,
         fetchDashboardData,
+        fetchDonations,
       }}
     >
       {children}

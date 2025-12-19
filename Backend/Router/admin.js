@@ -878,6 +878,28 @@ router.put("/users/:id/unblock", auth([ROLES.ADMIN]), async (req, res) => {
   }
 });
 
+// DELETE /api/admin/users/:id - Delete user
+router.delete("/users/:id", auth([ROLES.ADMIN]), async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    await logAction({
+      adminId: req.user.userId,
+      action: "USER_DELETE",
+      targetId: user._id,
+      targetType: "User",
+      details: { deletedUser: { name: user.Name, email: user.Email, role: user.Role } },
+    });
+
+    res.json({ message: "User deleted successfully", user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // GET /api/admin/reports/summary - Summary report with date filters
 router.get("/reports/summary", auth([ROLES.ADMIN]), async (req, res) => {
   try {

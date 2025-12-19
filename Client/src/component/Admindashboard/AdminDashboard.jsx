@@ -21,12 +21,26 @@ import {
 } from "lucide-react";
 
 import { SafePie, SafeLine } from "./SafeChart";
+import {
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 import StockView from "./StockView";
 import ReportsView from "./ReportsView";
 import BroadcastView from "./BroadcastView";
 import AlertsView from "./AlertsView";
 import AdminSidebar from "./AdminSidebar";
 import PendingQueue from "./PendingQueue";
+import UsersTable from "./UsersTable";
 
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
@@ -40,6 +54,9 @@ import {
   isSameDay,
   isSameMonth,
 } from "date-fns";
+
+import { toast } from "sonner";
+import adminApi from "../../api/adminApi";
 
 /* Admin Dashboard component (single-file full implementation) */
 const AdminDashboard = () => {
@@ -106,6 +123,7 @@ const AdminDashboard = () => {
     setSettings,
     totalUnits,
     fetchDashboardData,
+    fetchDonations,
   } = dashboardContext;
 
   // Map URL path to page name
@@ -147,6 +165,7 @@ const AdminDashboard = () => {
 
   // modals & forms
   const [showAddAppointmentModal, setShowAddAppointmentModal] = useState(false);
+  const [showAddDonationModal, setShowAddDonationModal] = useState(false);
   const [showAddRequestModal, setShowAddRequestModal] = useState(false);
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState({
@@ -186,6 +205,14 @@ const AdminDashboard = () => {
     status: "Active",
   });
 
+  const [newDonation, setNewDonation] = useState({
+    donorName: "",
+    bloodGroup: Object.keys(stock)[0] || "O+",
+    phone: "",
+    email: "",
+    notes: "",
+  });
+
   // Users pagination/search
   const [userSearch, setUserSearch] = useState("");
   const [userPage, setUserPage] = useState(1);
@@ -214,72 +241,137 @@ const AdminDashboard = () => {
     [users]
   );
 
-  // Charts config
-  const pieData = useMemo(() => {
-    const labels = Object.keys(stock || {});
-    const data = labels.map((k) => (stock || {})[k]?.units || 0);
-    return {
-      labels,
-      datasets: [
-        {
-          label: "Units",
-          data,
-          backgroundColor: [
-            "#ef4444",
-            "#dc2626",
-            "#f87171",
-            "#fb7185",
-            "#6366f1",
-            "#818cf8",
-            "#10b981",
-            "#34d399",
-          ],
-          borderColor: "#fff",
-          borderWidth: 2,
-        },
-      ],
-    };
+  // Charts config for Recharts
+  const COLORS = ["#ef4444", "#dc2626", "#f87171", "#fb7185", "#6366f1", "#818cf8", "#10b981", "#34d399"];
+
+  const pieChartData = useMemo(() => {
+    return Object.keys(stock || {}).map((bloodType, index) => ({
+      name: bloodType,
+      value: (stock || {})[bloodType]?.units || 0,
+      color: COLORS[index % COLORS.length]
+    }));
   }, [stock]);
 
-  const pieOptions = {
-    plugins: { legend: { position: "right" } },
-    maintainAspectRatio: false,
+  const areaChartData = useMemo(() => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return months.map((month, index) => ({
+      month,
+      donations: monthlyDonations[index] || 0
+    }));
+  }, [monthlyDonations]);
+
+  // Drag-and-drop handler for donations
+  const onDragEndDonation = async (result) => {
+    const { source, destination, draggableId } = result;
+
+    // Dropped outside valid droppable
+    if (!destination) return;
+
+    // Dropped in same position
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
+
+    const sourceCol = donationColumns[source.droppableId];
+    const destCol = donationColumns[destination.droppableId];
+
+    if (!sourceCol || !destCol) {
+      console.error("Invalid columns:", { sourceCol, destCol, donationColumns });
+      toast.error("Invalid drag operation");
+      return;
+    }
+
+    if (!sourceCol.items || !destCol.items) {
+      console.error("Missing items array:", { sourceCol, destCol });
+      toast.error("Invalid column data");
+      return;
+    }
+
+    // Get the dragged item
+    const draggedItem = sourceCol.items[source.index];
+
+    if (!draggedItem) {
+      console.error("Dragged item not found at index:", source.index);
+      toast.error("Item not found");
+      return;
+    }
+
+    // Optimistic update - update UI immediately
+    const newSourceItems = Array.from(sourceCol.items);
+    newSourceItems.splice(source.index, 1);
+
+    const newDestItems = Array.from(destCol.items);
+    newDestItems.splice(destination.index, 0, draggedItem);
+
+    const newColumns = {
+      ...donationColumns,
+      [source.droppableId]: {
+        ...sourceCol,
+        items: newSourceItems,
+      },
+      [destination.droppableId]: {
+        ...destCol,
+        items: newDestItems,
+      },
+    };
+
+    setDonationColumns(newColumns);
+
+    // Call backend API
+    try {
+      await adminApi.updateDonationStage(draggableId, destination.droppableId);
+      toast.success(`Donation moved to ${destCol.title}`);
+
+      // Refresh data from backend to ensure consistency
+      await fetchDonations();
+    } catch (error) {
+      console.error("Failed to update donation stage:", error);
+      toast.error("Failed to move donation. Changes reverted.");
+
+      // Revert optimistic update on error
+      setDonationColumns(donationColumns);
+    }
   };
 
-  const lineData = useMemo(
-    () => ({
-      labels: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ],
-      datasets: [
-        {
-          label: "Donations",
-          data: monthlyDonations,
-          tension: 0.35,
-          fill: true,
-          borderColor: "#ef4444",
-          backgroundColor: "rgba(239,68,68,0.12)",
-          pointRadius: 3,
-        },
-      ],
-    }),
-    [monthlyDonations]
-  );
+  // Handle creating new donation
+  const handleAddDonation = async () => {
+    const { donorName, bloodGroup, phone, email, notes } = newDonation;
 
-  const lineOptions = {
-    plugins: { legend: { position: "top" } },
-    maintainAspectRatio: false,
+    if (!donorName || !bloodGroup) {
+      toast.error("Donor name and blood group are required");
+      return;
+    }
+
+    try {
+      await adminApi.createDonation({
+        donorName,
+        bloodGroup,
+        phone,
+        email,
+        notes,
+      });
+
+      toast.success("Donor registered successfully!");
+      setShowAddDonationModal(false);
+
+      // Reset form
+      setNewDonation({
+        donorName: "",
+        bloodGroup: Object.keys(stock)[0] || "O+",
+        phone: "",
+        email: "",
+        notes: "",
+      });
+
+      // Refresh donations
+      await fetchDonations();
+    } catch (error) {
+      console.error("Failed to create donation:", error);
+      toast.error("Failed to register donor");
+    }
   };
 
   // Calendar helpers
@@ -302,32 +394,6 @@ const AdminDashboard = () => {
     ).length;
     return acc;
   }, {});
-
-  // DnD handlers (donation pipeline)
-  const onDragEndDonation = (result) => {
-    const { source, destination } = result;
-    if (!destination) return;
-    const src = donationColumns[source.droppableId];
-    const dst = donationColumns[destination.droppableId];
-    const srcItems = Array.from(src.items);
-    const [moved] = srcItems.splice(source.index, 1);
-
-    if (source.droppableId === destination.droppableId) {
-      srcItems.splice(destination.index, 0, moved);
-      setDonationColumns((prev) => ({
-        ...prev,
-        [src.id]: { ...src, items: srcItems },
-      }));
-    } else {
-      const dstItems = Array.from(dst.items);
-      dstItems.splice(destination.index, 0, moved);
-      setDonationColumns((prev) => ({
-        ...prev,
-        [src.id]: { ...src, items: srcItems },
-        [dst.id]: { ...dst, items: dstItems },
-      }));
-    }
-  };
 
   // DnD handlers (request pipeline)
   const onDragEndRequest = (result) => {
@@ -713,7 +779,35 @@ const AdminDashboard = () => {
                     <div className="text-xs text-gray-500">Trend per month</div>
                   </div>
                   <div className="h-56">
-                    <SafeLine data={lineData} options={lineOptions} />
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={areaChartData}>
+                        <defs>
+                          <linearGradient id="colorDonations" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                        <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#fff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="donations"
+                          stroke="#ef4444"
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#colorDonations)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
 
@@ -725,7 +819,38 @@ const AdminDashboard = () => {
                     <div className="text-xs text-gray-500">Units by group</div>
                   </div>
                   <div className="h-56">
-                    <SafePie data={pieData} options={pieOptions} />
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#fff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                          }}
+                        />
+                        <Legend
+                          verticalAlign="middle"
+                          align="right"
+                          layout="vertical"
+                          iconType="circle"
+                          wrapperStyle={{ fontSize: '12px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                   <div className="mt-3 text-xs text-gray-500">
                     <strong>Low stock:</strong>{" "}
@@ -740,7 +865,7 @@ const AdminDashboard = () => {
                   <h3 className="font-bold text-xl">Donation Pipeline</h3>
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => setShowAddAppointmentModal(true)}
+                      onClick={() => setShowAddDonationModal(true)}
                       className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" /> New Donation
@@ -867,9 +992,9 @@ const AdminDashboard = () => {
                     <Heart className="w-4 h-4 text-gray-400" /> Top Donors
                   </h4>
                   <ol className="space-y-3">
-                    {topDonors.map((d) => (
+                    {topDonors.map((d, index) => (
                       <li
-                        key={d.name}
+                        key={`donor-${index}`}
                         className="flex items-center justify-between"
                       >
                         <div>
@@ -917,8 +1042,8 @@ const AdminDashboard = () => {
             </>
           )}
 
-          {/* Users page */}
-          {activePage === "Users" && (
+          {/* Users page - DISABLED: Using UsersTable component instead */}
+          {false && activePage === "Users" && (
             <>
               <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1449,6 +1574,9 @@ const AdminDashboard = () => {
           {/* Alerts */}
           {activePage === "Alerts" && <AlertsView />}
 
+          {/* Users */}
+          {activePage === "Users" && <UsersTable />}
+
           {/* Settings */}
           {activePage === "Settings" && (
             <>
@@ -1888,6 +2016,86 @@ const AdminDashboard = () => {
                 onClick={handleAddUser}
               >
                 Add User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Donation Modal */}
+      {showAddDonationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-800">Register New Donor</h3>
+              <p className="text-sm text-gray-500 mt-1">Add a new donor to the donation pipeline</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Donor Name *</label>
+                <input
+                  type="text"
+                  value={newDonation.donorName}
+                  onChange={(e) => setNewDonation({ ...newDonation, donorName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
+                <select
+                  value={newDonation.bloodGroup}
+                  onChange={(e) => setNewDonation({ ...newDonation, bloodGroup: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                >
+                  {Object.keys(stock).map((group) => (
+                    <option key={group} value={group}>{group}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  value={newDonation.phone}
+                  onChange={(e) => setNewDonation({ ...newDonation, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                  placeholder="1234567890"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={newDonation.email}
+                  onChange={(e) => setNewDonation({ ...newDonation, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={newDonation.notes}
+                  onChange={(e) => setNewDonation({ ...newDonation, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                  rows="3"
+                  placeholder="First time donor, no medical history..."
+                />
+              </div>
+            </div>
+            <div className="p-6 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowAddDonationModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddDonation}
+                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
+              >
+                Register Donor
               </button>
             </div>
           </div>

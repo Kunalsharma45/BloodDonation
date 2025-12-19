@@ -4,7 +4,7 @@ import {
     Users,
     LogOut,
     ShieldCheck,
-    AlertTriangle,
+    Package,
     BarChart3,
     UserCircle,
     Settings,
@@ -25,9 +25,9 @@ const AdminSidebar = () => {
 
     const menuItems = [
         { icon: Home, label: 'Dashboard', path: '/admin/dashboard' },
-        { icon: Users, label: 'Users Management', path: '/admin/users' },
+        { icon: Users, label: 'User Management', path: '/admin/users' },
         { icon: ShieldCheck, label: 'Req Verification', path: '/admin/verification' },
-        { icon: AlertTriangle, label: 'System Alerts', path: '/admin/alerts' },
+        { icon: Package, label: 'Stock', path: '/admin/stock' },
         { icon: BarChart3, label: 'Reports & Logs', path: '/admin/reports' },
         { icon: UserCircle, label: 'Profile', path: '/admin/profile' },
         { icon: Settings, label: 'Settings', path: '/admin/settings' },

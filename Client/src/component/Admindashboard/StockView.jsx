@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useDashboard } from "../../context/DashboardContext";
 import adminApi from "../../api/adminApi";
-import { SafeLine } from "./SafeChart";
+import { SafePie } from "./SafeChart";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo } from "react";
@@ -12,7 +12,6 @@ const StockView = () => {
         settings,
         totalUnits,
         fetchDashboardData,
-        monthlyDonations
     } = useDashboard();
 
     const [showAddStockModal, setShowAddStockModal] = useState(false);
@@ -31,29 +30,45 @@ const StockView = () => {
         [stock, settings.threshold]
     );
 
-    const lineData = useMemo(
-        () => ({
-            labels: [
-                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-            ],
+    // Pie chart data for blood type availability
+    const pieData = useMemo(() => {
+        const labels = Object.keys(stock || {});
+        const data = labels.map((k) => (stock || {})[k]?.units || 0);
+        return {
+            labels,
             datasets: [
                 {
-                    label: "Donations",
-                    data: monthlyDonations,
-                    tension: 0.35,
-                    fill: true,
-                    borderColor: "#ef4444",
-                    backgroundColor: "rgba(239,68,68,0.12)",
-                    pointRadius: 3,
+                    label: "Units Available",
+                    data,
+                    backgroundColor: [
+                        "#ef4444", "#dc2626", "#f87171", "#fb7185",
+                        "#6366f1", "#818cf8", "#10b981", "#34d399",
+                    ],
+                    borderColor: "#fff",
+                    borderWidth: 2,
                 },
             ],
-        }),
-        [monthlyDonations]
-    );
+        };
+    }, [stock]);
 
-    const lineOptions = {
-        plugins: { legend: { position: "top" } },
+    const pieOptions = {
+        plugins: {
+            legend: {
+                position: "bottom",
+                labels: { padding: 15, font: { size: 11 } }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function (context) {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                        return `${label}: ${value} units (${percentage}%)`;
+                    }
+                }
+            }
+        },
         maintainAspectRatio: false,
     };
 
@@ -80,12 +95,8 @@ const StockView = () => {
         <div className="animate-fade-in">
             <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h3 className="text-lg font-bold text-gray-800">
-                        Stock Management
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Manage blood groups, add/remove units, and view analytics.
-                    </p>
+                    <h3 className="text-lg font-bold text-gray-800">Stock Management</h3>
+                    <p className="text-sm text-gray-500 mt-1">Manage blood groups, add/remove units, and view analytics.</p>
                 </div>
                 <div className="flex gap-3">
                     <button
@@ -104,48 +115,25 @@ const StockView = () => {
                         <table className="w-full text-left">
                             <thead className="bg-gray-50/50">
                                 <tr>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                                        Group
-                                    </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                                        Units
-                                    </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                                        Reserved
-                                    </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                                        Safe Level
-                                    </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">
-                                        Actions
-                                    </th>
+                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Group</th>
+                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Units</th>
+                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Reserved</th>
+                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Safe Level</th>
+                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {Object.keys(stock || {}).map((g) => (
-                                    <tr
-                                        key={g}
-                                        className="hover:bg-gray-50 transition-colors"
-                                    >
+                                    <tr key={g} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-4 py-3 font-medium">{g}</td>
-                                        <td className="px-4 py-3">
-                                            {(stock || {})[g]?.units || 0}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {(stock || {})[g]?.reserved || 0}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {settings.threshold} U
-                                        </td>
+                                        <td className="px-4 py-3">{(stock || {})[g]?.units || 0}</td>
+                                        <td className="px-4 py-3">{(stock || {})[g]?.reserved || 0}</td>
+                                        <td className="px-4 py-3">{settings.threshold} U</td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <button
                                                     onClick={() => {
-                                                        setStockEdit({
-                                                            group: g,
-                                                            change: 0,
-                                                            reason: "Donation",
-                                                        });
+                                                        setStockEdit({ group: g, change: 0, reason: "Donation" });
                                                         setShowAddStockModal(true);
                                                     }}
                                                     className="px-3 py-1 rounded-lg bg-indigo-50 text-indigo-600 text-sm hover:bg-indigo-100"
@@ -162,75 +150,71 @@ const StockView = () => {
                 </div>
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                    <h4 className="font-bold mb-4">Stock Analytics</h4>
-                    <div className="h-48">
-                        <SafeLine data={lineData} options={lineOptions} />
+                    <h4 className="font-bold mb-4">Blood Type Availability</h4>
+                    <div className="h-64">
+                        <SafePie data={pieData} options={pieOptions} />
                     </div>
-                    <div className="mt-4 text-xs text-gray-500">
-                        <p>
-                            Total units: <strong>{totalUnits}</strong>
-                        </p>
-                        <p>
-                            Low stock groups:{" "}
-                            <strong>{lowStockTypes.join(", ") || "—"}</strong>
-                        </p>
+                    <div className="mt-4 pt-4 border-t border-gray-100 space-y-2 text-xs text-gray-600">
+                        <div className="flex justify-between items-center">
+                            <span>Total units:</span>
+                            <strong className="text-gray-900 text-sm">{totalUnits}</strong>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span>Blood groups:</span>
+                            <strong className="text-gray-900 text-sm">{Object.keys(stock || {}).length}</strong>
+                        </div>
+                        {lowStockTypes.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                                <div className="flex items-start gap-2">
+                                    <span className="text-amber-600 font-medium">⚠️ Low stock:</span>
+                                    <div className="flex flex-wrap gap-1">
+                                        {lowStockTypes.map((type) => (
+                                            <span key={type} className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium text-xs">
+                                                {type}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Adjust Stock Modal */}
             {showAddStockModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
                         <div className="p-6 border-b border-gray-100">
-                            <h3 className="text-lg font-bold text-gray-800">
-                                Adjust Stock Level
-                            </h3>
+                            <h3 className="text-lg font-bold text-gray-800">Adjust Stock Level</h3>
                         </div>
                         <div className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Blood Group
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
                                 <select
                                     value={stockEdit.group}
-                                    onChange={(e) =>
-                                        setStockEdit({ ...stockEdit, group: e.target.value })
-                                    }
+                                    onChange={(e) => setStockEdit({ ...stockEdit, group: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none"
                                 >
                                     {Object.keys(stock || {}).map((g) => (
-                                        <option key={g} value={g}>
-                                            {g}
-                                        </option>
+                                        <option key={g} value={g}>{g}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Change Amount (+/- units)
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Change Amount (+/- units)</label>
                                 <input
                                     type="number"
                                     value={stockEdit.change}
-                                    onChange={(e) =>
-                                        setStockEdit({ ...stockEdit, change: e.target.value })
-                                    }
+                                    onChange={(e) => setStockEdit({ ...stockEdit, change: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Use positive (e.g., 5) to add, negative (e.g., -5) to remove.
-                                </p>
+                                <p className="text-xs text-gray-500 mt-1">Use positive (e.g., 5) to add, negative (e.g., -5) to remove.</p>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Reason
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
                                 <select
                                     value={stockEdit.reason}
-                                    onChange={(e) =>
-                                        setStockEdit({ ...stockEdit, reason: e.target.value })
-                                    }
+                                    onChange={(e) => setStockEdit({ ...stockEdit, reason: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none"
                                 >
                                     <option value="Donation">Donation</option>

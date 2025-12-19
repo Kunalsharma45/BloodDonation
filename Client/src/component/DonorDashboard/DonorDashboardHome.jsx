@@ -6,7 +6,6 @@ import DonationStats from './DonationStats';
 import HistoryList from './HistoryList';
 import MapWidget from './MapWidget';
 import Appointments from './Appointments';
-import AppointmentsList from './AppointmentsList';
 import Analytics from './Analytics';
 
 const DonorDashboardHome = ({ user, fetchProfile }) => {
@@ -15,7 +14,6 @@ const DonorDashboardHome = ({ user, fetchProfile }) => {
             <WelcomeCard user={user} onRefresh={fetchProfile} />
             <QuickActions />
             <Appointments />
-            <AppointmentsList />
             <div className='grid grid-cols-2 gap-3'>
                 <NearbyRequests />
                 {/* Map temporarily disabled to avoid duplicate Leaflet container crash */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import client from '../../api/client';
+import orgApi from '../../api/orgApi';
 import { useAuth } from '../../context/AuthContext';
 import { TrendingUp, Package, FileText, Calendar, BarChart3, PieChart } from 'lucide-react';
 import { getOrgPermissions } from './orgUtils';
@@ -39,8 +39,8 @@ const AnalyticsTab = () => {
     const fetchAnalytics = async () => {
         try {
             setLoading(true);
-            const res = await client.get('/api/org/analytics');
-            setAnalytics(res.data);
+            const data = await orgApi.getAnalytics();
+            setAnalytics(data);
         } catch (err) {
             console.error('Failed to fetch analytics:', err);
         } finally {

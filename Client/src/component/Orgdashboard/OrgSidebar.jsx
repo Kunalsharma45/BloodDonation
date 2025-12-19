@@ -33,6 +33,7 @@ const OrgSidebar = () => {
     const allMenuItems = [
         { icon: Home, label: 'Dashboard', path: '/org/dashboard', visible: true },
         { icon: Package, label: 'Blood Inventory', path: '/org/inventory', visible: permissions.canManageInventory },
+        { icon: Droplet, label: 'Donation Pipeline', path: '/org/donations', visible: permissions.canManageDonations },
         { icon: FileText, label: 'My Blood Requests', path: '/org/requests', visible: permissions.canCreateRequests },
         { icon: Inbox, label: 'Incoming Requests', path: '/org/incoming', visible: permissions.canViewIncoming },
         { icon: Calendar, label: 'Appointments', path: '/org/appointments', visible: permissions.canManageAppointments },

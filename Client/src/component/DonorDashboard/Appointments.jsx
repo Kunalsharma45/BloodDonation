@@ -3,6 +3,7 @@ import { Calendar, Clock, MapPin, Plus, Loader2, X } from 'lucide-react';
 import LoadingSkeleton from '../common/LoadingSkeleton';
 import donorApi from '../../api/donorApi';
 import { toast } from 'sonner';
+import BookAppointmentModal from './BookAppointmentModal';
 
 const Appointments = () => {
     const [appointments, setAppointments] = useState([]);
@@ -11,6 +12,7 @@ const Appointments = () => {
     const [cancelModal, setCancelModal] = useState(null);
     const [cancelReason, setCancelReason] = useState('');
     const [cancelling, setCancelling] = useState(false);
+    const [showBookingModal, setShowBookingModal] = useState(false);
 
     const fetchAppointments = async () => {
         try {
@@ -95,7 +97,10 @@ const Appointments = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-bold text-gray-800">My Appointments</h3>
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm shadow-red-200">
+                    <button
+                        onClick={() => setShowBookingModal(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm shadow-red-200"
+                    >
                         <Plus size={14} />
                         Book New
                     </button>
@@ -202,6 +207,17 @@ const Appointments = () => {
                     </div>
                 </div>
             )}
+
+            {/* Book Appointment Modal */}
+            <BookAppointmentModal
+                isOpen={showBookingModal}
+                onClose={() => setShowBookingModal(false)}
+                request={null}
+                onSuccess={() => {
+                    setShowBookingModal(false);
+                    fetchAppointments();
+                }}
+            />
         </>
     );
 };

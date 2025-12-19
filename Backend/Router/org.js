@@ -530,6 +530,73 @@ router.put("/appointments/:id/complete", auth([ROLES.ORGANIZATION]), async (req,
   }
 });
 
+// Start Donation from Appointment
+router.post("/appointments/:id/start-donation", auth([ROLES.ORGANIZATION]), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const appointment = await Appointment.findOne({
+      _id: id,
+      organizationId: req.user.userId,
+    }).populate("donorId", "Name Email bloodGroup Phone");
+
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    if (appointment.status !== "UPCOMING") {
+      return res.status(400).json({ message: "Can only start donation for upcoming appointments" });
+    }
+
+    // Check if donation already exists for this appointment
+    const { default: Donation } = await import("../modules/Donation.js");
+    const existingDonation = await Donation.findOne({ appointmentId: id });
+
+    if (existingDonation) {
+      return res.status(400).json({
+        message: "Donation already started for this appointment",
+        donationId: existingDonation._id
+      });
+    }
+
+    // Create donation with donor data from appointment
+    const donation = await Donation.create({
+      donorId: appointment.donorId._id,
+      donorName: appointment.donorId.Name,
+      bloodGroup: appointment.donorId.bloodGroup,
+      phone: appointment.donorId.Phone || "",
+      email: appointment.donorId.Email || "",
+      appointmentId: id,
+      stage: "new-donors",
+      createdBy: req.user.userId,
+      organizationId: req.user.userId,
+      notes: `Created from appointment on ${new Date(appointment.dateTime).toLocaleDateString()}`,
+    });
+
+    // Add initial history entry
+    await donation.addHistoryEntry(
+      "Donation created from appointment",
+      req.user.userId,
+      `Donor arrived for scheduled appointment`
+    );
+
+    res.status(201).json({
+      message: "Donation started successfully",
+      donation: {
+        id: donation._id.toString(),
+        name: donation.donorName,
+        group: donation.bloodGroup,
+        date: donation.donationDate,
+        stage: donation.stage,
+        appointmentId: donation.appointmentId,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ============ ANALYTICS ============
 router.get("/analytics", auth([ROLES.ORGANIZATION]), async (req, res) => {
   try {
