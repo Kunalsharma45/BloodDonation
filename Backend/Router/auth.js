@@ -149,7 +149,12 @@ router.post("/signup", async (req, res) => {
       await bloodbank.create({ user_Id, ...Extra });
     }
 
-    const tokenPayload = { email: Email, role: canonical, userId: user_Id };
+    const tokenPayload = {
+      email: Email,
+      role: canonical,
+      userId: user_Id,
+      organizationType: userData.organizationType // Add organizationType to token
+    };
     const { accessToken, refreshToken } = signTokens(tokenPayload);
 
     res.json({
@@ -201,7 +206,12 @@ router.post("/login", async (req, res) => {
     user.lastLoginAt = new Date();
     await user.save();
 
-    const tokenPayload = { email: user.Email, role: canonical, userId: user._id };
+    const tokenPayload = {
+      email: user.Email,
+      role: canonical,
+      userId: user._id,
+      organizationType: user.organizationType // Add organizationType to token
+    };
     const { accessToken, refreshToken } = signTokens(tokenPayload);
 
     res.json({

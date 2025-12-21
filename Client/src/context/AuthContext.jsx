@@ -29,7 +29,10 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const userData = await authApi.me();
-      setUser({ ...userData, role: normalizeRole(userData.role || userData.legacyRole) });
+      const normalizedUser = { ...userData, role: normalizeRole(userData.role || userData.legacyRole) };
+      setUser(normalizedUser);
+      // Update localStorage with the complete user data
+      localStorage.setItem("liforceUser", JSON.stringify(normalizedUser));
     } catch (err) {
       console.error("Auth check failed:", err);
       // If 401, client.js might have tried refresh already. 
@@ -58,7 +61,10 @@ export const AuthProvider = ({ children }) => {
   const fetchUserProfile = async () => {
     try {
       const userData = await authApi.me();
-      setUser(prev => ({ ...prev, ...userData, role: normalizeRole(userData.role || userData.legacyRole) }));
+      const updatedUser = { ...userData, role: normalizeRole(userData.role || userData.legacyRole) };
+      setUser(updatedUser);
+      // Update localStorage with the complete user data including organizationType
+      localStorage.setItem("liforceUser", JSON.stringify(updatedUser));
     } catch (err) {
       console.error("Failed to fetch user profile:", err);
     }

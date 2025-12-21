@@ -4,23 +4,77 @@ import orgApi from '../../api/orgApi';
 import { useAuth } from '../../context/AuthContext';
 import { Package, AlertTriangle, Calendar, FileText, Inbox, TrendingUp, Clock } from 'lucide-react';
 import { getOrgPermissions, getOrgTypeLabel, getOrgTypeBadgeColor } from './orgUtils';
+import DonationStatsCards from './DonationStatsCards';
+import DonationTrendsChart from './DonationTrendsChart';
+import BloodGroupChart from './BloodGroupChart';
 
-const StatCard = ({ icon: Icon, label, value, color = "red", onClick }) => (
-    <div
-        className={`bg-white border border-gray-100 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer' : ''}`}
-        onClick={onClick}
-    >
-        <div className="flex items-center justify-between">
-            <div>
-                <p className="text-sm text-gray-500 mb-1">{label}</p>
-                <p className="text-3xl font-bold text-gray-800">{value ?? 0}</p>
-            </div>
-            <div className={`p-3 bg-${color}-50 rounded-lg`}>
-                <Icon className={`text-${color}-600`} size={24} />
+const StatCard = ({ icon: Icon, label, value, color = "red", onClick }) => {
+    const colorStyles = {
+        blue: {
+            gradient: "from-blue-500 to-blue-600",
+            bg: "bg-gradient-to-br from-blue-50 to-blue-100/50",
+            iconBg: "bg-white",
+            iconColor: "text-blue-600",
+            ring: "ring-blue-100"
+        },
+        orange: {
+            gradient: "from-orange-500 to-orange-600",
+            bg: "bg-gradient-to-br from-orange-50 to-orange-100/50",
+            iconBg: "bg-white",
+            iconColor: "text-orange-600",
+            ring: "ring-orange-100"
+        },
+        green: {
+            gradient: "from-green-500 to-green-600",
+            bg: "bg-gradient-to-br from-green-50 to-green-100/50",
+            iconBg: "bg-white",
+            iconColor: "text-green-600",
+            ring: "ring-green-100"
+        },
+        purple: {
+            gradient: "from-purple-500 to-purple-600",
+            bg: "bg-gradient-to-br from-purple-50 to-purple-100/50",
+            iconBg: "bg-white",
+            iconColor: "text-purple-600",
+            ring: "ring-purple-100"
+        },
+        red: {
+            gradient: "from-red-500 to-red-600",
+            bg: "bg-gradient-to-br from-red-50 to-red-100/50",
+            iconBg: "bg-white",
+            iconColor: "text-red-600",
+            ring: "ring-red-100"
+        }
+    };
+
+    const style = colorStyles[color] || colorStyles.red;
+
+    return (
+        <div
+            className={`group relative overflow-hidden rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 ${onClick ? 'cursor-pointer' : ''}`}
+            onClick={onClick}
+        >
+            {/* Gradient Background */}
+            <div className={`absolute inset-0 ${style.bg} opacity-60`}></div>
+
+            {/* Content */}
+            <div className="relative p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div className={`w-14 h-14 ${style.iconBg} rounded-xl shadow-md flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 ring-4 ${style.ring}`}>
+                        <Icon className={`${style.iconColor}`} size={28} strokeWidth={2.5} />
+                    </div>
+                    {onClick && (
+                        <TrendingUp className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                </div>
+                <div>
+                    <p className="text-sm font-medium text-gray-600 mb-2">{label}</p>
+                    <p className="text-4xl font-bold text-gray-900">{value ?? 0}</p>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 const RequestCard = ({ request, onClick }) => {
     const urgencyColors = {
@@ -55,15 +109,23 @@ const OrgOverview = () => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [dashboardData, setDashboardData] = useState(null);
+    const [donationStats, setDonationStats] = useState(null);
+    const [statsLoading, setStatsLoading] = useState(true);
+    const [monthlyTrends, setMonthlyTrends] = useState(null);
+    const [bloodDistribution, setBloodDistribution] = useState(null);
+    const [chartsLoading, setChartsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const orgType = user?.organizationType;
     const permissions = getOrgPermissions(orgType);
 
     useEffect(() => {
-        fetchDashboardData();
+        fetchDashboard();
+        fetchDonationStats();
+        fetchChartData();
     }, []);
 
-    const fetchDashboardData = async () => {
+    const fetchDashboard = async () => {
         try {
             setLoading(true);
             const data = await orgApi.getDashboard();
@@ -72,6 +134,34 @@ const OrgOverview = () => {
             console.error('Failed to fetch dashboard data:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchDonationStats = async () => {
+        try {
+            setStatsLoading(true);
+            const stats = await orgApi.getDonationStats();
+            setDonationStats(stats);
+        } catch (err) {
+            console.error('Failed to fetch donation stats:', err);
+        } finally {
+            setStatsLoading(false);
+        }
+    };
+
+    const fetchChartData = async () => {
+        try {
+            setChartsLoading(true);
+            const [trends, distribution] = await Promise.all([
+                orgApi.getMonthlyDonationTrends(),
+                orgApi.getBloodGroupDistribution()
+            ]);
+            setMonthlyTrends(trends);
+            setBloodDistribution(distribution);
+        } catch (err) {
+            console.error('Failed to fetch chart data:', err);
+        } finally {
+            setChartsLoading(false);
         }
     };
 
@@ -87,25 +177,52 @@ const OrgOverview = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800 mb-1">
-                            {organization?.organizationName || organization?.Name || 'Organization Dashboard'}
-                        </h1>
-                        <p className="text-gray-500">
-                            {organization?.City && `📍 ${organization.City}`}
-                        </p>
-                    </div>
-                    <div className={`px-4 py-2 rounded-lg text-sm font-medium ${getOrgTypeBadgeColor(orgType)}`}>
-                        {getOrgTypeLabel(orgType)}
+            {/* Header with Gradient Background */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-red-500 to-pink-500 rounded-2xl shadow-lg">
+                <div className="absolute inset-0 bg-black/5"></div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-24 -translate-x-24"></div>
+
+                <div className="relative p-8">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
+                                    <Package className="text-red-600" size={28} strokeWidth={2.5} />
+                                </div>
+                                <h1 className="text-3xl font-bold text-white">
+                                    {organization?.organizationName || organization?.Name || 'Organization Dashboard'}
+                                </h1>
+                            </div>
+                            <p className="text-red-50 text-sm ml-15 flex items-center gap-2">
+                                {organization?.City && (
+                                    <>
+                                        <span className="inline-flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 bg-red-200 rounded-full animate-pulse"></span>
+                                            {organization.City}
+                                        </span>
+                                        <span className="text-red-200">•</span>
+                                    </>
+                                )}
+                                <span>Manage Blood Supply & Distribution</span>
+                            </p>
+                        </div>
+                        <div className="hidden md:block">
+                            <div className={`px-6 py-3 rounded-xl text-sm font-semibold shadow-lg backdrop-blur-sm border border-white/20 ${orgType === 'BOTH'
+                                ? 'bg-white/95 text-purple-700'
+                                : orgType === 'BANK'
+                                    ? 'bg-white/95 text-red-700'
+                                    : 'bg-white/95 text-blue-700'
+                                }`}>
+                                {getOrgTypeLabel(orgType)}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Stats Cards - Moved above charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {permissions.canManageInventory && (
                     <>
                         <StatCard
@@ -153,55 +270,76 @@ const OrgOverview = () => {
                 )}
             </div>
 
-            {/* Donation Pipeline (Blood Banks only) */}
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="transform hover:scale-[1.02] transition-transform duration-300">
+                    <DonationTrendsChart data={monthlyTrends} loading={chartsLoading} />
+                </div>
+                <div className="transform hover:scale-[1.02] transition-transform duration-300">
+                    <BloodGroupChart data={bloodDistribution} loading={chartsLoading} />
+                </div>
+            </div>
+
+            {/* Donation Pipeline (Blood Banks only) - Moved below graphs */}
             {permissions.canManageDonations && (
-                <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                            <Package className="text-red-600" size={20} />
-                            Donation Pipeline
-                        </h2>
-                        <button
-                            onClick={() => navigate('/org/donations')}
-                            className="text-sm font-medium text-red-600 hover:text-red-700"
-                        >
-                            View Full Pipeline →
-                        </button>
-                    </div>
+                <div className="relative overflow-hidden bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-50 to-transparent rounded-full -translate-y-32 translate-x-32"></div>
 
-                    {/* Compact 5-stage preview */}
-                    <div className="grid grid-cols-5 gap-3">
-                        {[
-                            { title: 'New Donors', color: 'from-red-50 to-red-100/50', count: 0 },
-                            { title: 'Screening', color: 'from-blue-50 to-blue-100/50', count: 0 },
-                            { title: 'In Progress', color: 'from-yellow-50 to-yellow-100/50', count: 0 },
-                            { title: 'Completed', color: 'from-green-50 to-green-100/50', count: 0 },
-                            { title: 'Ready for Storage', color: 'from-purple-50 to-purple-100/50', count: 0 }
-                        ].map((stage, index) => (
-                            <div
-                                key={index}
-                                className={`rounded-lg p-4 bg-gradient-to-br ${stage.color} border border-gray-100`}
-                            >
-                                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                                    {stage.title}
+                    <div className="relative p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-md">
+                                    <Package className="text-white" size={22} strokeWidth={2.5} />
                                 </div>
-                                <div className="text-2xl font-bold text-gray-800">{stage.count}</div>
-                                <div className="text-xs text-gray-500 mt-1">donations</div>
-                            </div>
-                        ))}
-                    </div>
+                                Donation Pipeline
+                            </h2>
+                            <button
+                                onClick={() => navigate('/org/donations')}
+                                className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:shadow-lg transform hover:scale-105 transition-all text-sm"
+                            >
+                                View Full Pipeline →
+                            </button>
+                        </div>
 
-                    <div className="mt-4 text-center">
-                        <p className="text-sm text-gray-500">
-                            Full drag-and-drop pipeline available on the Donation Pipeline page
-                        </p>
+                        {/* Compact 5-stage preview */}
+                        <div className="grid grid-cols-5 gap-4">
+                            {[
+                                { title: 'New Donors', color: 'from-red-50 to-red-100/50', ring: 'ring-red-100', text: 'text-red-600', count: 0 },
+                                { title: 'Screening', color: 'from-blue-50 to-blue-100/50', ring: 'ring-blue-100', text: 'text-blue-600', count: 0 },
+                                { title: 'In Progress', color: 'from-yellow-50 to-yellow-100/50', ring: 'ring-yellow-100', text: 'text-yellow-600', count: 0 },
+                                { title: 'Completed', color: 'from-green-50 to-green-100/50', ring: 'ring-green-100', text: 'text-green-600', count: 0 },
+                                { title: 'Ready for Storage', color: 'from-purple-50 to-purple-100/50', ring: 'ring-purple-100', text: 'text-purple-600', count: 0 }
+                            ].map((stage, index) => (
+                                <div
+                                    key={index}
+                                    className={`rounded-xl p-5 bg-gradient-to-br ${stage.color} border border-gray-100 hover:shadow-md transition-shadow ring-2 ${stage.ring}`}
+                                >
+                                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                                        {stage.title}
+                                    </div>
+                                    <div className={`text-3xl font-bold ${stage.text} mb-1`}>{stage.count}</div>
+                                    <div className="text-xs text-gray-500">donations</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-6 text-center">
+                            <p className="text-sm text-gray-500 bg-gray-50 rounded-lg py-3 px-4 inline-block">
+                                <span className="font-medium text-gray-700">💡 Tip:</span> Full drag-and-drop pipeline available on the Donation Pipeline page
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Two-column layout for requests */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* My Requests (Hospitals) */}
+            {/* Donation Stats Cards - for Blood Banks */}
+            {permissions.canManageInventory && (
+                <DonationStatsCards stats={donationStats} loading={statsLoading} />
+            )}
+
+            {/* Three-column layout for requests, appointments, and inventory */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Column 1: My Requests (Hospitals) OR Incoming Requests (Blood Banks) */}
                 {permissions.canCreateRequests && (
                     <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
@@ -238,7 +376,6 @@ const OrgOverview = () => {
                     </div>
                 )}
 
-                {/* Incoming Requests (Blood Banks) */}
                 {permissions.canViewIncoming && (
                     <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
@@ -269,11 +406,8 @@ const OrgOverview = () => {
                         )}
                     </div>
                 )}
-            </div>
 
-            {/* Bottom Row: Today's Appointments + Inventory Alerts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Today's Appointments */}
+                {/* Column 2: Today's Appointments */}
                 <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
                     <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
                         <Calendar className="text-green-600" size={20} />
@@ -305,7 +439,7 @@ const OrgOverview = () => {
                     )}
                 </div>
 
-                {/* Inventory Alerts (Blood Banks only) */}
+                {/* Column 3: Inventory Alerts (Blood Banks only) */}
                 {permissions.canManageInventory && (
                     <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
                         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">

@@ -26,7 +26,7 @@ export const getOrgPermissions = (orgType) => {
         canManageInventory: [ORG_TYPES.BLOOD_BANK, ORG_TYPES.BOTH].includes(orgType),
         canCreateRequests: [ORG_TYPES.HOSPITAL, ORG_TYPES.BOTH].includes(orgType),
         canViewIncoming: [ORG_TYPES.BLOOD_BANK, ORG_TYPES.BOTH].includes(orgType),
-        canManageDonations: [ORG_TYPES.BLOOD_BANK, ORG_TYPES.BOTH].includes(orgType),
+        canManageDonations: true, // All orgs (including hospitals)
         canManageAppointments: true, // All orgs
         canCreateCamps: true, // All orgs
         canViewAnalytics: true // All orgs

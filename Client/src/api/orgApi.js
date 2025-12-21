@@ -25,6 +25,20 @@ export const orgApi = {
         return res.data;
     },
 
+    // Batch Operations
+    batchReserveUnits: async (unitIds) => {
+        const res = await client.put("/api/org/inventory/batch/reserve", { unitIds });
+        return res.data;
+    },
+    batchIssueUnits: async (unitIds) => {
+        const res = await client.put("/api/org/inventory/batch/issue", { unitIds });
+        return res.data;
+    },
+    batchExpireUnits: async (unitIds) => {
+        const res = await client.put("/api/org/inventory/batch/expire", { unitIds });
+        return res.data;
+    },
+
     // Requests
     getMyRequests: async () => {
         const res = await client.get("/api/org/requests");
@@ -82,6 +96,22 @@ export const orgApi = {
     // Stats
     getStats: async () => {
         const res = await client.get("/api/org/stats");
+        return res.data;
+    },
+
+    // Donation Stats
+    getDonationStats: async () => {
+        const res = await client.get("/api/org/donation-stats");
+        return res.data;
+    },
+
+    // Chart Data
+    getMonthlyDonationTrends: async () => {
+        const res = await client.get("/api/org/monthly-donation-trends");
+        return res.data;
+    },
+    getBloodGroupDistribution: async () => {
+        const res = await client.get("/api/org/blood-group-distribution");
         return res.data;
     }
 };

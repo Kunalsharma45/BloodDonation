@@ -7,6 +7,7 @@ import Request from "../modules/Request.js";
 import User from "../modules/User.js";
 import Appointment from "../modules/Appointment.js";
 import Camp from "../modules/Camp.js";
+import Donation from "../modules/Donation.js";
 
 const router = express.Router();
 
@@ -132,9 +133,168 @@ router.get("/dashboard", auth([ROLES.ORGANIZATION]), async (req, res) => {
     response.todayAppointments = todayAppointments;
 
     res.json(response);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// ============ DONATION STATS ============
+// Real-time donation pipeline statistics
+router.get("/donation-stats", auth([ROLES.ORGANIZATION]), async (req, res) => {
+  try {
+    const orgId = req.user.userId;
+
+    // Get current date boundaries
+    const now = new Date();
+    const todayStart = new Date(now.setHours(0, 0, 0, 0));
+    const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Count by stage
+    const byStage = await Donation.aggregate([
+      { $match: { organizationId: orgId } },
+      { $group: { _id: "$stage", count: { $sum: 1 } } }
+    ]);
+
+    // Convert to object
+    const stageStats = {
+      "new-donors": 0,
+      "screening": 0,
+      "in-progress": 0,
+      "completed": 0,
+      "ready-storage": 0
+    };
+    byStage.forEach(item => {
+      if (stageStats.hasOwnProperty(item._id)) {
+        stageStats[item._id] = item.count;
+      }
+    });
+
+    // Total in pipeline
+    const totalInPipeline = Object.values(stageStats).reduce((a, b) => a + b, 0);
+
+    // Time-based counts
+    const [today, thisWeek, thisMonth] = await Promise.all([
+      Donation.countDocuments({
+        organizationId: orgId,
+        createdAt: { $gte: todayStart }
+      }),
+      Donation.countDocuments({
+        organizationId: orgId,
+        createdAt: { $gte: weekStart }
+      }),
+      Donation.countDocuments({
+        organizationId: orgId,
+        createdAt: { $gte: monthStart }
+      })
+    ]);
+
+    // Success rate calculation
+    const completedDonations = await Donation.find({
+      organizationId: orgId,
+      stage: { $in: ["completed", "ready-storage"] }
+    }).select("labTests").lean();
+
+    const passedTests = completedDonations.filter(d => d.labTests?.allTestsPassed === true).length;
+    const successRate = completedDonations.length > 0
+      ? Math.round((passedTests / completedDonations.length) * 100 * 10) / 10
+      : 0;
+
+    // Completed today
+    const completedToday = await Donation.countDocuments({
+      organizationId: orgId,
+      stage: { $in: ["completed", "ready-storage"] },
+      updatedAt: { $gte: todayStart }
+    });
+
+    // Failed tests count
+    const failedTests = completedDonations.filter(d => d.labTests?.allTestsPassed === false).length;
+
+    res.json({
+      totalInPipeline,
+      byStage: stageStats,
+      today,
+      thisWeek,
+      thisMonth,
+      successRate,
+      completedToday,
+      failedTests
+    });
+  } catch (error) {
+    console.error("Donation stats error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// ============ CHART DATA ENDPOINTS ============
+// Monthly donation trends for line chart
+router.get("/monthly-donation-trends", auth([ROLES.ORGANIZATION]), async (req, res) => {
+  try {
+    const orgId = req.user.userId;
+
+    // Get last 12 months of data
+    const monthsData = [];
+    const now = new Date();
+
+    for (let i = 11; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+
+      const count = await Donation.countDocuments({
+        organizationId: orgId,
+        createdAt: { $gte: monthStart, $lte: monthEnd }
+      });
+
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      monthsData.push({
+        month: monthNames[monthStart.getMonth()],
+        donations: count
+      });
+    }
+
+    res.json(monthsData);
+  } catch (error) {
+    console.error("Monthly trends error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Blood group distribution for pie chart
+router.get("/blood-group-distribution", auth([ROLES.ORGANIZATION]), async (req, res) => {
+  try {
+    const orgId = req.user.userId;
+
+    // Get inventory counts by blood group
+    const distribution = await BloodUnit.aggregate([
+      { $match: { organizationId: orgId, status: "AVAILABLE" } },
+      { $group: { _id: "$bloodGroup", count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Define color palette matching chart design
+    const colorMap = {
+      'A+': '#ff6b9d',
+      'A-': '#ff8fb3',
+      'AB+': '#4ecdc4',
+      'AB-': '#95e1d3',
+      'B+': '#5dade2',
+      'B-': '#85c1e9',
+      'O+': '#f1948a',
+      'O-': '#f5b7b1'
+    };
+
+    // Format for pie chart
+    const chartData = distribution.map(item => ({
+      name: item._id,
+      value: item.count,
+      color: colorMap[item._id] || '#ef4444'
+    }));
+
+    res.json(chartData);
+  } catch (error) {
+    console.error("Blood distribution error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -236,6 +396,94 @@ router.get("/inventory/expiring", auth([ROLES.ORGANIZATION]), canManageInventory
       .sort({ expiryDate: 1 })
       .lean();
     res.json(items);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ============ BATCH OPERATIONS ============
+// Bulk reserve blood units
+router.put("/inventory/batch/reserve", auth([ROLES.ORGANIZATION]), canManageInventory, async (req, res) => {
+  try {
+    const { unitIds } = req.body;
+
+    if (!Array.isArray(unitIds) || unitIds.length === 0) {
+      return res.status(400).json({ message: "unitIds array is required" });
+    }
+
+    // Update only AVAILABLE units owned by this organization
+    const result = await BloodUnit.updateMany(
+      {
+        _id: { $in: unitIds },
+        organizationId: req.user.userId,
+        status: "AVAILABLE"
+      },
+      { $set: { status: "RESERVED" } }
+    );
+
+    res.json({
+      message: `${result.modifiedCount} unit(s) reserved`,
+      count: result.modifiedCount
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Bulk issue blood units
+router.put("/inventory/batch/issue", auth([ROLES.ORGANIZATION]), canManageInventory, async (req, res) => {
+  try {
+    const { unitIds } = req.body;
+
+    if (!Array.isArray(unitIds) || unitIds.length === 0) {
+      return res.status(400).json({ message: "unitIds array is required" });
+    }
+
+    // Update AVAILABLE or RESERVED units to ISSUED
+    const result = await BloodUnit.updateMany(
+      {
+        _id: { $in: unitIds },
+        organizationId: req.user.userId,
+        status: { $in: ["AVAILABLE", "RESERVED"] }
+      },
+      { $set: { status: "ISSUED" } }
+    );
+
+    res.json({
+      message: `${result.modifiedCount} unit(s) issued`,
+      count: result.modifiedCount
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Bulk mark as expired
+router.put("/inventory/batch/expire", auth([ROLES.ORGANIZATION]), canManageInventory, async (req, res) => {
+  try {
+    const { unitIds } = req.body;
+
+    if (!Array.isArray(unitIds) || unitIds.length === 0) {
+      return res.status(400).json({ message: "unitIds array is required" });
+    }
+
+    // Mark units as EXPIRED
+    const result = await BloodUnit.updateMany(
+      {
+        _id: { $in: unitIds },
+        organizationId: req.user.userId,
+        status: { $in: ["AVAILABLE", "RESERVED"] }
+      },
+      { $set: { status: "EXPIRED" } }
+    );
+
+    res.json({
+      message: `${result.modifiedCount} unit(s) marked as expired`,
+      count: result.modifiedCount
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });

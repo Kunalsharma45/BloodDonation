@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useMemo } from "react";
 import client from "../api/client";
 import adminApi from "../api/adminApi";
+import orgApi from "../api/orgApi";
 import { useAuth } from "./AuthContext";
 
 const DashboardContext = createContext(null);
@@ -157,117 +158,128 @@ export const DashboardProvider = ({ children }) => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch stock data
-      try {
-        const stockData = await adminApi.getStock();
-        if (stockData && Object.keys(stockData).length > 0) {
-          setStock(stockData);
-        }
-      } catch (err) {
-        console.error("Failed to fetch stock:", err);
-      }
+      // Check user role to determine which API to use
+      const userRole = user?.Role || user?.role;
+      const isAdmin = userRole === 'Admin' || userRole === 'ADMIN';
 
-      // Fetch monthly donations
-      try {
-        const donationsData = await adminApi.getMonthlyDonations();
-        if (Array.isArray(donationsData)) {
-          setMonthlyDonations(donationsData);
-        }
-      } catch (err) {
-        console.error("Failed to fetch monthly donations:", err);
-      }
+      console.log(`📊 [DashboardContext] Fetching data for role: ${userRole}`);
 
-      // Fetch donation pipeline
-      try {
-        const pipelineData = await adminApi.getDonationPipeline();
-        if (pipelineData && pipelineData["new-donors"]) {
-          setDonationColumns(pipelineData);
+      // Only fetch admin-specific data if user is an admin
+      if (isAdmin) {
+        // Fetch stock data
+        try {
+          const stockData = await adminApi.getStock();
+          if (stockData && Object.keys(stockData).length > 0) {
+            setStock(stockData);
+          }
+        } catch (err) {
+          console.error("Failed to fetch stock:", err);
         }
-      } catch (err) {
-        console.error("Failed to fetch donation pipeline:", err);
-      }
 
-      // Fetch users
-      try {
-        const usersData = await adminApi.getUsers({ limit: 100 });
-        if (usersData?.items) {
-          setUsers(
-            usersData.items.map((u) => ({
-              id: u._id,
-              name: u.Name || u.name,
-              email: u.Email || u.email,
-              role: u.Role || u.role,
-              status:
-                u.accountStatus === "ACTIVE"
-                  ? "Active"
-                  : u.accountStatus || "Offline",
-              avatar: (u.Name || u.name || "U")
-                .split(" ")
-                .map((n) => n[0])
-                .slice(0, 2)
-                .join(""),
-              lastActive: "Recently",
-            }))
-          );
+        // Fetch monthly donations
+        try {
+          const donationsData = await adminApi.getMonthlyDonations();
+          if (Array.isArray(donationsData)) {
+            setMonthlyDonations(donationsData);
+          }
+        } catch (err) {
+          console.error("Failed to fetch monthly donations:", err);
         }
-      } catch (err) {
-        console.error("Failed to fetch users:", err);
-      }
 
-      // Fetch appointments
-      try {
-        const appointmentsData = await adminApi.getAppointments();
-        if (Array.isArray(appointmentsData)) {
-          setAppointments(
-            appointmentsData.map((a) => ({
-              id: a._id,
-              name: a.donorName || "Unknown",
-              group: a.bloodGroup || "O+",
-              date: a.dateTime
-                ? new Date(a.dateTime).toISOString().split("T")[0]
-                : new Date().toISOString().split("T")[0],
-              time: a.dateTime
-                ? new Date(a.dateTime).toTimeString().slice(0, 5)
-                : "10:00",
-              email: a.donorEmail || "",
-              phone: a.phone || "",
-              status:
-                a.status === "UPCOMING" ? "Scheduled" : a.status || "Scheduled",
-              notes: a.notes || "",
-            }))
-          );
+        // Fetch donation pipeline
+        try {
+          const pipelineData = await adminApi.getDonationPipeline();
+          if (pipelineData && pipelineData["new-donors"]) {
+            setDonationColumns(pipelineData);
+          }
+        } catch (err) {
+          console.error("Failed to fetch donation pipeline:", err);
         }
-      } catch (err) {
-        console.error("Failed to fetch appointments:", err);
-      }
 
-      // Fetch requests
-      try {
-        const requestsData = await adminApi.getRequests();
-        if (Array.isArray(requestsData)) {
-          setRequests(
-            requestsData.map((r) => ({
-              id: r._id,
-              hospital: r.hospitalName || r.createdByName || "Unknown",
-              group: r.bloodGroup,
-              units: r.units,
-              date: r.createdAt
-                ? new Date(r.createdAt).toISOString().split("T")[0]
-                : new Date().toISOString().split("T")[0],
-              urgency: r.urgency || "Normal",
-              contact: r.contact || "",
-              status:
-                r.status === "OPEN"
-                  ? "Pending"
-                  : r.status === "FULFILLED"
-                    ? "Approved"
-                    : r.status || "Pending",
-              notes: r.notes || "",
-            }))
-          );
+        // Fetch users
+        try {
+          const usersData = await adminApi.getUsers({ limit: 100 });
+          if (usersData?.items) {
+            setUsers(
+              usersData.items.map((u) => ({
+                id: u._id,
+                name: u.Name || u.name,
+                email: u.Email || u.email,
+                role: u.Role || u.role,
+                status:
+                  u.accountStatus === "ACTIVE"
+                    ? "Active"
+                    : u.accountStatus || "Offline",
+                avatar: (u.Name || u.name || "U")
+                  .split(" ")
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join(""),
+                lastActive: "Recently",
+              }))
+            );
+          }
+        } catch (err) {
+          console.error("Failed to fetch users:", err);
         }
-      } catch (err) {
-        console.error("Failed to fetch requests:", err);
+
+        // Fetch appointments
+        try {
+          const appointmentsData = await adminApi.getAppointments();
+          if (Array.isArray(appointmentsData)) {
+            setAppointments(
+              appointmentsData.map((a) => ({
+                id: a._id,
+                name: a.donorName || "Unknown",
+                group: a.bloodGroup || "O+",
+                date: a.dateTime
+                  ? new Date(a.dateTime).toISOString().split("T")[0]
+                  : new Date().toISOString().split("T")[0],
+                time: a.dateTime
+                  ? new Date(a.dateTime).toTimeString().slice(0, 5)
+                  : "10:00",
+                email: a.donorEmail || "",
+                phone: a.phone || "",
+                status:
+                  a.status === "UPCOMING" ? "Scheduled" : a.status || "Scheduled",
+                notes: a.notes || "",
+              }))
+            );
+          }
+        } catch (err) {
+          console.error("Failed to fetch appointments:", err);
+        }
+
+        // Fetch requests
+        try {
+          const requestsData = await adminApi.getRequests();
+          if (Array.isArray(requestsData)) {
+            setRequests(
+              requestsData.map((r) => ({
+                id: r._id,
+                hospital: r.hospitalName || r.createdByName || "Unknown",
+                group: r.bloodGroup,
+                units: r.units,
+                date: r.createdAt
+                  ? new Date(r.createdAt).toISOString().split("T")[0]
+                  : new Date().toISOString().split("T")[0],
+                urgency: r.urgency || "Normal",
+                contact: r.contact || "",
+                status:
+                  r.status === "OPEN"
+                    ? "Pending"
+                    : r.status === "FULFILLED"
+                      ? "Approved"
+                      : r.status || "Pending",
+                notes: r.notes || "",
+              }))
+            );
+          }
+        } catch (err) {
+          console.error("Failed to fetch requests:", err);
+        }
+      } else {
+        console.log("ℹ️ [DashboardContext] Skipping admin API calls for non-admin user");
       }
     } catch (err) {
       console.error("Failed to fetch dashboard data:", err);
@@ -277,9 +289,17 @@ export const DashboardProvider = ({ children }) => {
   // Fetch donations from backend
   const fetchDonations = async () => {
     try {
-      const data = await adminApi.getDonations();
-      setDonationColumns(data);
-      console.log("✅ [DashboardContext] Donations fetched successfully");
+      // Check user role
+      const userRole = user?.Role || user?.role;
+      const isAdmin = userRole === 'Admin' || userRole === 'ADMIN';
+
+      if (isAdmin) {
+        const data = await adminApi.getDonations();
+        setDonationColumns(data);
+        console.log("✅ [DashboardContext] Donations fetched successfully");
+      } else {
+        console.log("ℹ️ [DashboardContext] Skipping admin donations fetch for non-admin user");
+      }
     } catch (err) {
       console.error("Failed to fetch donations:", err);
     }

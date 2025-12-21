@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 import adminApi from '../../api/adminApi';
+import orgApi from '../../api/orgApi';
 import ScreeningFormModal from './ScreeningFormModal';
 import DonorDetailsModal from './DonorDetailsModal';
 import BloodCollectionModal from './BloodCollectionModal';
@@ -51,8 +52,11 @@ const DonationPipelineTab = () => {
     const [showCollectionModal, setShowCollectionModal] = useState(false);
     const [showLabTestModal, setShowLabTestModal] = useState(false);
     const [selectedDonation, setSelectedDonation] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [pipelineStats, setPipelineStats] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [donorSearchTerm, setDonorSearchTerm] = useState('');
+    const [donorSearchResults, setDonorSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
     const [emailExists, setEmailExists] = useState(null);
     const [phoneExists, setPhoneExists] = useState(null);
@@ -70,6 +74,7 @@ const DonationPipelineTab = () => {
 
     useEffect(() => {
         fetchDonations();
+        fetchStats();
     }, []);
 
     const fetchDonations = async () => {
@@ -79,23 +84,34 @@ const DonationPipelineTab = () => {
         } catch (error) {
             console.error('Failed to fetch donations:', error);
             toast.error('Failed to load donations');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchStats = async () => {
+        try {
+            const stats = await orgApi.getDonationStats();
+            setPipelineStats(stats);
+        } catch (error) {
+            console.error('Failed to fetch stats:', error);
         }
     };
 
     // Search for existing donors
     const searchDonors = async (query) => {
         if (!query || query.length < 2) {
-            setSearchResults([]);
+            setDonorSearchResults([]);
             return;
         }
 
         setSearching(true);
         try {
             const response = await adminApi.getUsers({ search: query, role: 'donor', limit: 5 });
-            setSearchResults(response.users || []);
+            setDonorSearchResults(response.users || []);
         } catch (error) {
             console.error('Failed to search donors:', error);
-            setSearchResults([]);
+            setDonorSearchResults([]);
         } finally {
             setSearching(false);
         }
@@ -104,11 +120,11 @@ const DonationPipelineTab = () => {
     // Debounced search
     useEffect(() => {
         const timer = setTimeout(() => {
-            searchDonors(searchQuery);
+            searchDonors(donorSearchTerm);
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [searchQuery]);
+    }, [donorSearchTerm]);
 
     // Select donor from search results
     const selectDonor = (donor) => {
@@ -119,8 +135,8 @@ const DonationPipelineTab = () => {
             email: donor.Email || '',
             notes: `Existing donor - Last donation: ${donor.lastDonationDate ? new Date(donor.lastDonationDate).toLocaleDateString() : 'Never'}`
         });
-        setSearchQuery(donor.Name || '');
-        setSearchResults([]);
+        setDonorSearchTerm(donor.Name || '');
+        setDonorSearchResults([]);
         setEmailExists(null);
         setPhoneExists(null);
     };
@@ -224,10 +240,12 @@ const DonationPipelineTab = () => {
                 email: '',
                 notes: ''
             });
-            setSearchQuery('');
+            setDonorSearchTerm('');
+            setDonorSearchResults([]);
             setEmailExists(null);
             setPhoneExists(null);
             await fetchDonations();
+            fetchStats(); // Refresh stats after adding donation
         } catch (error) {
             console.error('Failed to create donation:', error);
             toast.error('Failed to register donor');
@@ -284,14 +302,16 @@ const DonationPipelineTab = () => {
                 items: newDestItems,
             },
         };
-
         setDonationColumns(newColumns);
 
         // Call backend API
         try {
-            await adminApi.updateDonationStage(draggableId, destination.droppableId);
-            toast.success(`Donation moved to ${destCol.title}`);
+            // Assuming draggableId is the donationId
+            const donationId = draggableId;
+            await adminApi.updateDonationStage(donationId, destination.droppableId, user.userId);
+            toast.success(`Moved to ${destCol.title}`);
             await fetchDonations();
+            fetchStats(); // Refresh stats after move
         } catch (error) {
             console.error('Failed to update donation stage:', error);
             toast.error('Failed to move donation. Changes reverted.');
@@ -340,6 +360,36 @@ const DonationPipelineTab = () => {
                     New Donation
                 </button>
             </div>
+
+            {/* Stats Summary Bar */}
+            {pipelineStats && (
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600">{pipelineStats.totalInPipeline || 0}</div>
+                            <div className="text-xs text-gray-600 font-medium">Total in Pipeline</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-2xl font-bold text-green-600">{pipelineStats.today || 0}</div>
+                            <div className="text-xs text-gray-600 font-medium">Today</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-2xl font-bold text-purple-600">{pipelineStats.thisWeek || 0}</div>
+                            <div className="text-xs text-gray-600 font-medium">This Week</div>
+                        </div>
+                        <div className="text-center">
+                            <div className={`text-2xl font-bold ${pipelineStats.successRate >= 90 ? 'text-green-600' : pipelineStats.successRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                {pipelineStats.successRate || 0}%
+                            </div>
+                            <div className="text-xs text-gray-600 font-medium">Success Rate</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-2xl font-bold text-indigo-600">{pipelineStats.completedToday || 0}</div>
+                            <div className="text-xs text-gray-600 font-medium">Completed Today</div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Kanban Board */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
@@ -395,8 +445,8 @@ const DonationPipelineTab = () => {
                                                                 {/* Stage-specific information */}
                                                                 {col.id === 'screening' && it.screeningStatus && (
                                                                     <div className={`text-[10px] font-bold px-2 py-1 rounded-md mb-2 ${it.screeningStatus === 'approved' ? 'bg-green-100 text-green-700' :
-                                                                            it.screeningStatus === 'rejected' ? 'bg-red-100 text-red-700' :
-                                                                                'bg-yellow-100 text-yellow-700'
+                                                                        it.screeningStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                                                                            'bg-yellow-100 text-yellow-700'
                                                                         }`}>
                                                                         {it.screeningStatus === 'approved' ? '✓ Approved' :
                                                                             it.screeningStatus === 'rejected' ? '✗ Rejected' :
@@ -483,19 +533,19 @@ const DonationPipelineTab = () => {
                                 </label>
                                 <input
                                     type="text"
-                                    value={searchQuery}
+                                    value={donorSearchTerm}
                                     onChange={(e) => {
-                                        setSearchQuery(e.target.value);
+                                        setDonorSearchTerm(e.target.value);
                                         setNewDonation({ ...newDonation, donorName: e.target.value });
                                     }}
+                                    placeholder="Search by name, email, or phone..."
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none"
-                                    placeholder="Type donor name to search..."
                                 />
 
                                 {/* Search Results Dropdown */}
-                                {searchResults.length > 0 && (
+                                {donorSearchResults.length > 0 && (
                                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                        {searchResults.map((donor) => (
+                                        {donorSearchResults.map((donor) => (
                                             <button
                                                 key={donor._id}
                                                 type="button"
@@ -528,9 +578,9 @@ const DonationPipelineTab = () => {
                                 )}
 
                                 <p className="text-xs text-gray-500 mt-1">
-                                    {searchResults.length > 0
-                                        ? `Found ${searchResults.length} existing donor(s)`
-                                        : searchQuery.length >= 2 && !searching
+                                    {donorSearchResults.length > 0
+                                        ? `Found ${donorSearchResults.length} existing donor(s)`
+                                        : donorSearchTerm.length >= 2 && !searching
                                             ? 'No existing donors found - will create new'
                                             : 'Start typing to search existing donors'}
                                 </p>
@@ -660,6 +710,7 @@ const DonationPipelineTab = () => {
                     }}
                     onSuccess={() => {
                         fetchDonations();
+                        fetchStats();
                     }}
                 />
             )}
@@ -685,6 +736,7 @@ const DonationPipelineTab = () => {
                     }}
                     onSuccess={() => {
                         fetchDonations();
+                        fetchStats();
                     }}
                 />
             )}

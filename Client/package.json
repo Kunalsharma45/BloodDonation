@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
+    "@react-google-maps/api": "^2.20.8",
     "@tailwindcss/vite": "^4.1.17",
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",
@@ -31,7 +32,7 @@
     "react-is": "^19.2.1",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^7.9.6",
-    "recharts": "^3.5.1",
+    "recharts": "^3.6.0",
     "sonner": "^1.5.3"
   },
   "devDependencies": {
