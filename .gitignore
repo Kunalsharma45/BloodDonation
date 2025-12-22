@@ -1,2 +1,6 @@
-# .env
-# node_modules
+node_modules/
+Backend/node_modules/
+Client/node_modules/
+.env
+Backend/.env
+Client/.env
