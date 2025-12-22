@@ -78,8 +78,6 @@ const BookAppointmentModal = ({ isOpen, onClose, request, onSuccess }) => {
         // Check if we have organizationId
         const orgId = request?.organizationId?._id || request?.organizationId || formData.organizationId;
 
-        console.log('[BookAppointment] Request data:', request);
-        console.log('[BookAppointment] Organization ID:', orgId);
 
         if (!orgId) {
             toast.error('Please provide hospital/organization details');
@@ -99,7 +97,6 @@ const BookAppointmentModal = ({ isOpen, onClose, request, onSuccess }) => {
                 notes: formData.notes
             };
 
-            console.log('[BookAppointment] Sending:', appointmentData);
 
             await donorApi.bookAppointment(appointmentData);
 

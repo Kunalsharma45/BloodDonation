@@ -26,18 +26,15 @@ const Sidebar = () => {
     };
 
     const handleLogout = () => {
-        console.log('🚀 [LOGOUT] Starting logout process...');
 
         // Clear auth data first
         logout();
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        console.log('🚀 [LOGOUT] Auth cleared!');
 
         toast.success("Logged out successfully");
 
         // Hard redirect to homepage (forces page reload, bypassing React state)
-        console.log('🚀 [LOGOUT] Redirecting to homepage...');
         window.location.href = '/';
     };
 

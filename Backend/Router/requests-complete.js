@@ -234,8 +234,6 @@ router.get("/assigned", authenticate, requireRole(ROLES.DONOR), async (req, res)
  */
 router.post("/org", authenticate, requireRole(ROLES.ORGANIZATION), async (req, res) => {
     try {
-        console.log("📝 Creating request for user:", req.user.userId);
-        console.log("📝 Request body:", req.body);
 
         const {
             bloodGroup,
@@ -259,7 +257,6 @@ router.post("/org", authenticate, requireRole(ROLES.ORGANIZATION), async (req, r
             return res.status(404).json({ message: "Organization not found" });
         }
 
-        console.log("✅ Organization found:", org.organizationName);
 
         const request = new Request({
             organizationId: req.user.userId,
@@ -285,7 +282,6 @@ router.post("/org", authenticate, requireRole(ROLES.ORGANIZATION), async (req, r
 
         await request.save();
 
-        console.log("✅ Request created successfully:", request._id);
 
         res.status(201).json({
             message: "Blood request created successfully",
@@ -390,7 +386,6 @@ router.put("/org/:id/assign", authenticate, requireRole(ROLES.ORGANIZATION), asy
             });
 
             if (existingAppointment) {
-                console.log(`⚠️ Appointment already exists for donor ${donorId} and request ${req.params.id}`);
                 appointment = existingAppointment;
             } else {
                 // Use provided date or default to 24 hours from now
@@ -405,7 +400,6 @@ router.put("/org/:id/assign", authenticate, requireRole(ROLES.ORGANIZATION), asy
                     notes: `Appointment for ${request.bloodGroup} blood donation - ${request.unitsNeeded} unit(s)`
                 });
 
-                console.log(`✅ Created NEW appointment ${appointment._id} for donor ${donorId}`);
             }
         } else if (bloodBankId) {
             request.assignedTo = { type: "BLOOD_BANK", organizationId: bloodBankId };
@@ -458,7 +452,6 @@ router.put("/org/:id/fulfill", authenticate, requireRole(ROLES.ORGANIZATION), as
 
                 await donor.save();
 
-                console.log(`✅ Updated donor ${donor.name} eligibility: next eligible ${nextEligibleDate.toDateString()}`);
             }
         }
 
@@ -683,7 +676,6 @@ router.post("/admin/broadcast", authenticate, requireRole(ROLES.ADMIN), async (r
         // TODO: Create Notification records for each donor
         // TODO: Send push notifications/emails
 
-        console.log(`📢 Broadcast to ${eligibleDonors.length} eligible ${request.bloodGroup} donors`);
 
         res.json({
             message: "Broadcast sent successfully",

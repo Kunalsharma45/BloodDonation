@@ -11,15 +11,9 @@ for (const dbName of databases) {
     const count = await users.countDocuments({ organizationType: 'HOSPITAL' });
 
     if (count > 0) {
-        console.log(`\n✅ DATABASE: ${dbName}`);
-        console.log(`   HOSPITAL accounts: ${count}\n`);
 
         const accounts = await users.find({ organizationType: 'HOSPITAL' }).toArray();
         accounts.forEach(a => {
-            console.log(`   Name: ${a.organizationName || a.Name}`);
-            console.log(`   Email: ${a.Email}`);
-            console.log(`   ID: ${a._id}`);
-            console.log('');
         });
     }
 

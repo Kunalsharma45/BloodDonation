@@ -61,7 +61,6 @@ import adminApi from "../../api/adminApi";
 
 /* Admin Dashboard component (single-file full implementation) */
 const AdminDashboard = () => {
-  console.log("AdminDashboard component starting to render");
 
   let location, navigate;
   try {
@@ -85,7 +84,6 @@ const AdminDashboard = () => {
   let dashboardContext;
   try {
     dashboardContext = useDashboard();
-    console.log("DashboardContext loaded successfully");
   } catch (error) {
     console.error("DashboardContext error:", error);
     return (
@@ -131,7 +129,6 @@ const AdminDashboard = () => {
   // Add fallback fetch on mount to ensure data loads
   useEffect(() => {
     if (!dataLoading && Object.keys(stock || {}).length === 0) {
-      console.log("AdminDashboard: Initial data check - fetching...");
       fetchDashboardData();
     }
   }, []);
@@ -169,7 +166,6 @@ const AdminDashboard = () => {
 
   // Debug: Log component render
   useEffect(() => {
-    console.log("AdminDashboard rendered", {
       activePage,
       location: location.pathname,
     });
@@ -673,7 +669,6 @@ const AdminDashboard = () => {
   ];
 
   // Render
-  console.log("AdminDashboard rendering UI", {
     activePage,
     stockKeys: Object.keys(stock || {}).length,
   });

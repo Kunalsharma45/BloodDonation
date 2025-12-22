@@ -136,7 +136,7 @@ router.get("/dashboard", auth([ROLES.ORGANIZATION]), async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Dashboard error:", error);
+
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -161,7 +161,7 @@ router.get("/donation-stats", auth([ROLES.ORGANIZATION]), async (req, res) => {
       { $match: { organizationId: orgObjectId } },
       { $group: { _id: "$stage", count: { $sum: 1 } } }
     ]);
-    console.log('📊 Donation stats by stage:', byStage);
+
 
     // Convert to object
     const stageStats = {
@@ -226,10 +226,10 @@ router.get("/donation-stats", auth([ROLES.ORGANIZATION]), async (req, res) => {
       completedToday,
       failedTests
     };
-    console.log('✅ Sending donation pipeline stats:', response);
+
     res.json(response);
   } catch (error) {
-    console.error("Donation stats error:", error);
+
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -265,15 +265,7 @@ router.get("/monthly-donation-trends", auth([ROLES.ORGANIZATION]), async (req, r
       ]);
 
       // Debug logging for December and November
-      if (i === 0 || i === 1) {
-        console.log(`Month ${monthNames[monthStart.getMonth()]}:`, {
-          orgId,
-          monthStart: monthStart.toISOString(),
-          monthEnd: monthEnd.toISOString(),
-          donationCount,
-          requestCount
-        });
-      }
+
 
       monthsData.push({
         month: monthNames[monthStart.getMonth()],
@@ -282,10 +274,10 @@ router.get("/monthly-donation-trends", auth([ROLES.ORGANIZATION]), async (req, r
       });
     }
 
-    console.log('📈 Monthly Trends Data:', monthsData);
+
     res.json(monthsData);
   } catch (error) {
-    console.error("Monthly trends error:", error);
+
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -294,7 +286,7 @@ router.get("/monthly-donation-trends", auth([ROLES.ORGANIZATION]), async (req, r
 router.get("/blood-group-distribution", auth([ROLES.ORGANIZATION]), async (req, res) => {
   try {
     const orgId = req.user.userId;
-    console.log('🩸 Blood distribution API called for org:', orgId);
+
 
     // Get inventory counts by blood group
     const distribution = await BloodUnit.aggregate([
@@ -303,7 +295,7 @@ router.get("/blood-group-distribution", auth([ROLES.ORGANIZATION]), async (req, 
       { $sort: { _id: 1 } }
     ]);
 
-    console.log('📊 Blood distribution raw data:', distribution);
+
 
     // Define color palette matching chart design
     const colorMap = {
@@ -324,10 +316,10 @@ router.get("/blood-group-distribution", auth([ROLES.ORGANIZATION]), async (req, 
       color: colorMap[item._id] || '#ef4444'
     }));
 
-    console.log('✅ Sending chart data:', chartData);
+
     res.json(chartData);
   } catch (error) {
-    console.error("❌ Blood distribution error:", error);
+
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -362,7 +354,7 @@ router.post("/requests/:id/reserve", auth([ROLES.ORGANIZATION]), async (req, res
 
     res.json({ reserved: units.length, message: "Units reserved" });
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -375,7 +367,7 @@ router.post("/requests/:id/cannot-help", auth([ROLES.ORGANIZATION]), async (req,
     if (!request) return res.status(404).json({ message: "Request not found" });
     res.json({ message: "Noted. No units reserved for this request." });
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -389,7 +381,7 @@ router.get("/inventory", auth([ROLES.ORGANIZATION]), canManageInventory, async (
       .lean();
     res.json(items);
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -402,7 +394,7 @@ router.post("/inventory", auth([ROLES.ORGANIZATION]), canManageInventory, async 
       return res.status(400).json({ message: "group, collectionDate, expiryDate are required" });
     }
 
-    console.log('💉 Adding blood unit for org:', req.user.userId);
+
 
     const unit = await BloodUnit.create({
       organizationId: req.user.userId,
@@ -413,11 +405,11 @@ router.post("/inventory", auth([ROLES.ORGANIZATION]), canManageInventory, async 
       barcode,
     });
 
-    console.log('✅ Blood unit created:', { id: unit._id, bloodGroup: unit.bloodGroup, status: unit.status, orgId: unit.organizationId });
+
 
     res.status(201).json(unit);
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -437,7 +429,7 @@ router.get("/inventory/expiring", auth([ROLES.ORGANIZATION]), canManageInventory
       .lean();
     res.json(items);
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -480,7 +472,7 @@ router.put("/inventory/batch/reserve", auth([ROLES.ORGANIZATION]), canManageInve
           'assignedTo.organizationId': req.user.userId
         }
       });
-      console.log(`✅ Request ${requestId} marked as ASSIGNED with ${result.modifiedCount} units reserved`);
+
     }
 
     res.json({
@@ -488,7 +480,7 @@ router.put("/inventory/batch/reserve", auth([ROLES.ORGANIZATION]), canManageInve
       count: result.modifiedCount
     });
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -517,7 +509,7 @@ router.put("/inventory/batch/issue", auth([ROLES.ORGANIZATION]), canManageInvent
       count: result.modifiedCount
     });
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -546,7 +538,7 @@ router.put("/inventory/batch/expire", auth([ROLES.ORGANIZATION]), canManageInven
       count: result.modifiedCount
     });
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -556,7 +548,7 @@ router.put("/inventory/batch/expire", auth([ROLES.ORGANIZATION]), canManageInven
 router.get("/requests/incoming", auth([ROLES.ORGANIZATION]), canViewIncoming, async (req, res) => {
   try {
     const orgId = req.user.userId;
-    console.log('🔍 [Incoming Requests] Blood Bank ID:', orgId);
+
 
     // Get blood bank's location for distance calculation
     const bloodBank = await User.findById(orgId).select("locationGeo Name organizationName").lean();
@@ -564,7 +556,7 @@ router.get("/requests/incoming", auth([ROLES.ORGANIZATION]), canViewIncoming, as
     if (!bloodBank) {
       return res.status(404).json({ message: "Organization not found" });
     }
-    console.log('🏦 [Incoming Requests] Blood Bank:', bloodBank.organizationName || bloodBank.Name);
+
 
     // IMPORTANT: Convert orgId to ObjectId for aggregate query
     const orgObjectId = new mongoose.Types.ObjectId(orgId);
@@ -593,12 +585,11 @@ router.get("/requests/incoming", auth([ROLES.ORGANIZATION]), canViewIncoming, as
       availableGroups.push(item._id);
     });
 
-    console.log('📦 [Incoming Requests] Available Groups:', availableGroups);
-    console.log('📊 [Incoming Requests] Inventory Counts:', groupCountMap);
+
 
     // If no inventory, return empty array
     if (availableGroups.length === 0) {
-      console.log('❌ [Incoming Requests] No inventory found, returning empty array');
+
       return res.json([]);
     }
 
@@ -613,7 +604,7 @@ router.get("/requests/incoming", auth([ROLES.ORGANIZATION]), canViewIncoming, as
       .limit(50)
       .lean();
 
-    console.log('📋 [Incoming Requests] Found requests:', requests.length);
+
 
     // Enrich requests with stock availability and distance
     const enrichedRequests = requests.map(request => {
@@ -650,7 +641,7 @@ router.get("/requests/incoming", auth([ROLES.ORGANIZATION]), canViewIncoming, as
 
     res.json(enrichedRequests);
   } catch (err) {
-    console.error("Incoming requests error:", err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -676,7 +667,7 @@ router.post("/requests", auth([ROLES.ORGANIZATION]), canCreateRequests, async (r
     });
     res.status(201).json(doc);
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -689,7 +680,7 @@ router.get("/requests", auth([ROLES.ORGANIZATION]), canCreateRequests, async (re
       .lean();
     res.json(list);
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -711,7 +702,7 @@ router.put("/requests/:id/status", auth([ROLES.ORGANIZATION]), async (req, res) 
     if (!updated) return res.status(404).json({ message: "Request not found" });
     res.json(updated);
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -744,7 +735,7 @@ router.put("/requests/:id/fulfill", auth([ROLES.ORGANIZATION]), async (req, res)
       unitsReceived: unitsReceived || request.units,
     });
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -774,7 +765,7 @@ router.get("/requests/:id/matches", auth([ROLES.ORGANIZATION]), async (req, res)
 
     res.json({ donors });
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -793,7 +784,7 @@ router.post("/requests/:id/assign-donor", auth([ROLES.ORGANIZATION]), async (req
     if (!request) return res.status(404).json({ message: "Request not found" });
     res.json(request);
   } catch (err) {
-    console.error(err);
+
     res.status(500).json({ message: "Server error" });
   }
 });

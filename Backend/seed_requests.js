@@ -9,12 +9,10 @@ const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const seedRequests = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/BloodDonation");
-        console.log("Connected.");
 
         // Find an org user to attribute requests to
         let orgUser = await User.findOne({ Role: { $in: ["hospital", "bloodbank", "ORGANIZATION"] } });
         if (!orgUser) {
-            console.log("Creating dummy organization...");
             orgUser = await User.create({
                 Name: "City Hospital",
                 Email: "cityhospital@example.com",
@@ -26,7 +24,6 @@ const seedRequests = async () => {
             });
         }
 
-        console.log(`Using Org: ${orgUser.Name}`);
 
         // Create one request for EACH blood group at the default location
         const requests = BLOOD_GROUPS.map(bg => ({
@@ -40,7 +37,6 @@ const seedRequests = async () => {
         }));
 
         await Request.insertMany(requests);
-        console.log(`Seeded ${requests.length} requests (one for each blood group).`);
 
     } catch (err) {
         console.error(err);

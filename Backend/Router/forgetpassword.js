@@ -21,7 +21,6 @@ const transporter = nodemailer.createTransport({
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
-  console.log("🔐 Forgot password request for:", email);
 
   try {
     // Find user by email
@@ -113,7 +112,6 @@ router.post("/forgot-password", async (req, res) => {
     // Send the email
     await transporter.sendMail(mailOptions);
 
-    console.log(`✅ Password reset email sent to: ${email}`);
 
     res.json({
       success: true,
@@ -186,7 +184,6 @@ router.post("/reset-password", async (req, res) => {
     user.Password = hashedPassword;
     await user.save();
 
-    console.log(`✅ Password reset successful for: ${user.Email}`);
 
     res.json({
       success: true,

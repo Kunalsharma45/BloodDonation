@@ -293,11 +293,9 @@ donationSchema.methods.moveToStage = async function (newStage, performedBy, note
         if (org && org.organizationType === "BANK") {
             // BLOOD BANK: Mark as stored (will be added to inventory manually)
             this.status = "stored";
-            console.log(`✅ [BLOOD BANK] Donation ${this._id} marked as 'stored' - hidden from pipeline`);
         } else {
             // HOSPITAL: Mark as used (blood used on patient)
             this.status = "used";
-            console.log(`✅ [HOSPITAL] Donation ${this._id} marked as 'used' - hidden from pipeline`);
         }
     } else if (newStage === "rejected") {
         // Mark donation as rejected (failed lab tests)
@@ -321,7 +319,6 @@ donationSchema.methods.moveToStage = async function (newStage, performedBy, note
 donationSchema.methods.autoFulfillRequest = async function () {
     // Update linked appointment status to COLLECTED
     if (this.appointmentId) {
-        console.log(`[Donation] Updating appointment ${this.appointmentId} to COLLECTED`);
         try {
             const updatedAppointment = await Appointment.findByIdAndUpdate(
                 this.appointmentId,
@@ -333,11 +330,9 @@ donationSchema.methods.autoFulfillRequest = async function () {
             ).populate('requestId');
 
             if (updatedAppointment) {
-                console.log(`✅ Appointment ${this.appointmentId} updated to COLLECTED`);
 
                 // Auto-fulfill linked blood request if exists
                 if (updatedAppointment.requestId) {
-                    console.log(`[Donation] Auto-fulfilling request ${updatedAppointment.requestId}`);
                     try {
                         const request = await Request.findByIdAndUpdate(
                             updatedAppointment.requestId,
@@ -347,11 +342,9 @@ donationSchema.methods.autoFulfillRequest = async function () {
                             },
                             { new: true }
                         );
-                        console.log(`✅ Request ${updatedAppointment.requestId} marked as FULFILLED`);
 
                         // Update donor eligibility
                         if (request?.assignedTo?.type === "DONOR" && request.assignedTo.donorId) {
-                            console.log(`[Donation] Updating donor ${request.assignedTo.donorId} eligibility`);
                             try {
                                 const User = mongoose.model('User');
                                 const donor = await User.findById(request.assignedTo.donorId);
@@ -367,7 +360,6 @@ donationSchema.methods.autoFulfillRequest = async function () {
                                     donor.eligible = false; // Mark as ineligible
 
                                     await donor.save();
-                                    console.log(`✅ Donor ${donor.Name} eligibility updated. Next eligible: ${nextEligibleDate.toDateString()}`);
                                 }
                             } catch (donorError) {
                                 console.error("Error updating donor eligibility:", donorError);
@@ -378,13 +370,11 @@ donationSchema.methods.autoFulfillRequest = async function () {
                     }
                 }
             } else {
-                console.log(`❌ Appointment ${this.appointmentId} NOT FOUND`);
             }
         } catch (error) {
             console.error("Error updating appointment status:", error);
         }
     } else {
-        console.log('[Donation] No appointmentId linked to this donation');
     }
 };
 

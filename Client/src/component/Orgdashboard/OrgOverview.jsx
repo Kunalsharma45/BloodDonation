@@ -176,16 +176,12 @@ const OrgOverview = () => {
     const fetchChartData = async () => {
         try {
             setChartsLoading(true);
-            console.log('🔄 Fetching chart data...');
 
             const [trends, distribution] = await Promise.all([
                 orgApi.getMonthlyDonationTrends(),
                 orgApi.getBloodGroupDistribution()
             ]);
 
-            console.log('📊 Chart data received:');
-            console.log('  - Monthly trends:', trends);
-            console.log('  - Blood distribution:', distribution);
 
             setMonthlyTrends(trends);
             setBloodDistribution(distribution);

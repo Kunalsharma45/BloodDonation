@@ -101,7 +101,6 @@ export const DashboardProvider = ({ children }) => {
       const userRole = rawRole.toString().toUpperCase();
       const isAdmin = userRole === 'ADMIN';
 
-      console.log(`📊 [DashboardContext] Fetching data for role: ${userRole}`);
 
       // Only fetch admin-specific data if user is an admin
       if (isAdmin) {
@@ -221,7 +220,6 @@ export const DashboardProvider = ({ children }) => {
         // Mark data as loaded
         setDataLoading(false);
       } else {
-        console.log("ℹ️ [DashboardContext] Skipping admin API calls for non-admin user");
         setDataLoading(false);
       }
     } catch (err) {
@@ -241,9 +239,7 @@ export const DashboardProvider = ({ children }) => {
       if (isAdmin) {
         const data = await adminApi.getDonations();
         setDonationColumns(data);
-        console.log("✅ [DashboardContext] Donations fetched successfully");
       } else {
-        console.log("ℹ️ [DashboardContext] Skipping admin donations fetch for non-admin user");
       }
     } catch (err) {
       console.error("Failed to fetch donations:", err);
@@ -255,7 +251,6 @@ export const DashboardProvider = ({ children }) => {
   useEffect(() => {
     // Wait for auth to finish loading first
     if (authLoading) {
-      console.log('⏳ [DashboardContext] Waiting for auth to load...');
       return;
     }
 
@@ -263,13 +258,11 @@ export const DashboardProvider = ({ children }) => {
     const token = localStorage.getItem('accessToken');
 
     if (user && token) {
-      console.log('📊 [DashboardContext] User authenticated, fetching dashboard data');
       fetchDashboardData();
       fetchDonations(); // Fetch donations from backend
 
       // Auto-refresh every 30 seconds
       const refreshInterval = setInterval(() => {
-        console.log('🔄 [DashboardContext] Auto-refreshing dashboard data...');
         fetchDashboardData();
         fetchDonations();
       }, 30000); // 30 seconds
@@ -277,7 +270,6 @@ export const DashboardProvider = ({ children }) => {
       // Refresh when user returns to tab
       const handleVisibilityChange = () => {
         if (!document.hidden) {
-          console.log('👁️ [DashboardContext] Tab visible, refreshing data...');
           fetchDashboardData();
           fetchDonations();
         }
@@ -288,10 +280,8 @@ export const DashboardProvider = ({ children }) => {
       return () => {
         clearInterval(refreshInterval);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
-        console.log('🧹 [DashboardContext] Auto-refresh cleanup complete');
       };
     } else {
-      console.log('⏭️ [DashboardContext] No authenticated user, skipping data fetch');
     }
   }, [user, authLoading]); // React to changes in user authentication state
 

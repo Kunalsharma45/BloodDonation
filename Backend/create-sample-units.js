@@ -5,7 +5,6 @@ await mongoose.connect('mongodb://localhost:27017/liforce');
 
 const orgId = '6946ff84e5bb59549eb37464';
 
-console.log('🩸 Creating sample blood units for testing...\n');
 
 // Create sample blood units
 const sampleUnits = [
@@ -35,10 +34,8 @@ for (let i = 0; i < sampleUnits.length; i++) {
         barcode: `BU-${Date.now()}-${i}`
     });
     units.push(unit);
-    console.log(`✅ Created: ${unit.bloodGroup} - ${unit.barcode}`);
 }
 
-console.log(`\n🎉 Successfully created ${units.length} blood units!`);
 
 // Verify
 const count = await BloodUnit.countDocuments({
@@ -46,7 +43,6 @@ const count = await BloodUnit.countDocuments({
     status: 'AVAILABLE'
 });
 
-console.log(`\n📊 Total available units for org ${orgId}: ${count}`);
 
 // Show distribution
 const distribution = await BloodUnit.aggregate([
@@ -55,11 +51,8 @@ const distribution = await BloodUnit.aggregate([
     { $sort: { _id: 1 } }
 ]);
 
-console.log('\n📈 Distribution by blood group:');
 distribution.forEach(item => {
-    console.log(`  ${item._id}: ${item.count} units`);
 });
 
-console.log('\n💡 Now refresh your dashboard to see the charts!');
 
 await mongoose.connection.close();
