@@ -104,6 +104,7 @@ npm install
 Create a `.env` file in the `Client` directory:
 ```env
 VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+VITE_BACKEND_URL=your_backend_server_url
 ```
 
 Start the frontend development server:
