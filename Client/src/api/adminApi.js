@@ -1,5 +1,6 @@
 import client from "./client";
 
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 /**
  * Admin API endpoints
  */
@@ -8,7 +9,7 @@ export const adminApi = {
      * Get global dashboard summary
      */
     getSummary: async () => {
-        const res = await client.get("/api/admin/summary");
+        const res = await client.get(`${BASE_URL}/api/admin/summary`);
         return res.data;
     },
 
@@ -16,7 +17,7 @@ export const adminApi = {
      * Get pending verification counts
      */
     getPendingCounts: async () => {
-        const res = await client.get("/api/admin/pending-counts");
+        const res = await client.get(`${BASE_URL}/api/admin/pending-counts`);
         return res.data;
     },
 
@@ -25,7 +26,7 @@ export const adminApi = {
      * @param {object} params - { status, page, limit, search }
      */
     getDonors: async (params = {}) => {
-        const res = await client.get("/api/admin/donors", { params });
+        const res = await client.get(`${BASE_URL}/api/admin/donors`, { params });
         return res.data;
     },
 
@@ -33,7 +34,7 @@ export const adminApi = {
      * Approve donor
      */
     approveDonor: async (id) => {
-        const res = await client.put(`/api/admin/donors/${id}/approve`);
+        const res = await client.put(`${BASE_URL}/api/admin/donors/${id}/approve`);
         return res.data;
     },
 
@@ -41,7 +42,7 @@ export const adminApi = {
      * Reject donor
      */
     rejectDonor: async (id, reason) => {
-        const res = await client.put(`/api/admin/donors/${id}/reject`, { reason });
+        const res = await client.put(`${BASE_URL}/api/admin/donors/${id}/reject`, { reason });
         return res.data;
     },
 
@@ -50,7 +51,7 @@ export const adminApi = {
      * @param {object} params - { status, page, limit, search }
      */
     getOrgs: async (params = {}) => {
-        const res = await client.get("/api/admin/orgs", { params });
+        const res = await client.get(`${BASE_URL}/api/admin/orgs`, { params });
         return res.data;
     },
 
@@ -58,7 +59,7 @@ export const adminApi = {
      * Approve organization
      */
     approveOrg: async (id) => {
-        const res = await client.put(`/api/admin/orgs/${id}/approve`);
+        const res = await client.put(`${BASE_URL}/api/admin/orgs/${id}/approve`);
         return res.data;
     },
 
@@ -66,7 +67,7 @@ export const adminApi = {
      * Reject organization
      */
     rejectOrg: async (id, reason) => {
-        const res = await client.put(`/api/admin/orgs/${id}/reject`, { reason });
+        const res = await client.put(`${BASE_URL}/api/admin/orgs/${id}/reject`, { reason });
         return res.data;
     },
 
@@ -75,7 +76,7 @@ export const adminApi = {
      * @param {object} params - { role, status, page, limit, search }
      */
     getUsers: async (params = {}) => {
-        const res = await client.get("/api/admin/users", { params });
+        const res = await client.get(`${BASE_URL}/api/admin/users`, { params });
         return res.data;
     },
 
@@ -83,11 +84,11 @@ export const adminApi = {
      * Block user
      */
     blockUser: async (id) => {
-        const res = await client.put(`/api/admin/users/${id}/block`);
+        const res = await client.put(`${BASE_URL}/api/admin/users/${id}/block`);
         return res.data;
     },
     deleteUser: async (id) => {
-        const res = await client.delete(`/api/admin/users/${id}`);
+        const res = await client.delete(`${BASE_URL}/api/admin/users/${id}`);
         return res.data;
     },
 
@@ -95,7 +96,7 @@ export const adminApi = {
      * Unblock user
      */
     unblockUser: async (id) => {
-        const res = await client.put(`/api/admin/users/${id}/unblock`);
+        const res = await client.put(`${BASE_URL}/api/admin/users/${id}/unblock`);
         return res.data;
     },
 
@@ -103,7 +104,7 @@ export const adminApi = {
      * Verify user (approve/reject)
      */
     verifyUser: async (id, status, reason = "") => {
-        const res = await client.put(`/api/admin/users/${id}/verify`, {
+        const res = await client.put(`${BASE_URL}/api/admin/users/${id}/verify`, {
             status,
             reason,
         });
@@ -114,7 +115,7 @@ export const adminApi = {
      * Get system stats
      */
     getStats: async () => {
-        const res = await client.get("/api/admin/stats");
+        const res = await client.get(`${BASE_URL}/api/admin/stats`);
         return res.data;
     },
 
@@ -123,7 +124,7 @@ export const adminApi = {
      * @param {object} params - { severity, status, page, limit }
      */
     getAlerts: async (params = {}) => {
-        const res = await client.get("/api/admin/alerts", { params });
+        const res = await client.get(`${BASE_URL}/api/admin/alerts`, { params });
         return res.data;
     },
 
@@ -131,7 +132,7 @@ export const adminApi = {
      * Resolve alert
      */
     resolveAlert: async (id) => {
-        const res = await client.put(`/api/admin/alerts/${id}/resolve`);
+        const res = await client.put(`${BASE_URL}/api/admin/alerts/${id}/resolve`);
         return res.data;
     },
 
@@ -140,7 +141,7 @@ export const adminApi = {
      * @param {object} params - { action, actor, from, to, page, limit }
      */
     getAuditLogs: async (params = {}) => {
-        const res = await client.get("/api/admin/audit-logs", { params });
+        const res = await client.get(`${BASE_URL}/api/admin/audit-logs`, { params });
         return res.data;
     },
 
@@ -148,7 +149,7 @@ export const adminApi = {
      * Broadcast notification
      */
     broadcast: async (data) => {
-        const res = await client.post("/api/admin/broadcast", data);
+        const res = await client.post(`${BASE_URL}/api/admin/broadcast`, data);
         return res.data;
     },
 
@@ -156,7 +157,7 @@ export const adminApi = {
      * Get sent notifications
      */
     getSentNotifications: async (params = {}) => {
-        const res = await client.get("/api/admin/notifications/sent", { params });
+        const res = await client.get(`${BASE_URL}/api/admin/notifications/sent`, { params });
         return res.data;
     },
 
@@ -164,7 +165,7 @@ export const adminApi = {
      * Get profile update requests
      */
     getProfileUpdates: async () => {
-        const res = await client.get("/api/admin/profile-updates");
+        const res = await client.get(`${BASE_URL}/api/admin/profile-updates`);
         return res.data;
     },
 
@@ -172,7 +173,7 @@ export const adminApi = {
      * Action on profile update (approve/reject)
      */
     actionProfileUpdate: async (id, action, reason = "") => {
-        const res = await client.put(`/api/admin/profile-updates/${id}/action`, {
+        const res = await client.put(`${BASE_URL}/api/admin/profile-updates/${id}/action`, {
             action,
             reason,
         });
@@ -183,7 +184,7 @@ export const adminApi = {
      * Get stock summary
      */
     getStock: async () => {
-        const res = await client.get("/api/admin/stock");
+        const res = await client.get(`${BASE_URL}/api/admin/stock`);
         return res.data;
     },
 
@@ -191,7 +192,7 @@ export const adminApi = {
      * Update stock
      */
     updateStock: async (group, change, reason) => {
-        const res = await client.put("/api/admin/stock", { group, change, reason });
+        const res = await client.put(`${BASE_URL}/api/admin/stock`, { group, change, reason });
         return res.data;
     },
 
@@ -199,7 +200,7 @@ export const adminApi = {
      * Get monthly donations data
      */
     getMonthlyDonations: async () => {
-        const res = await client.get("/api/admin/monthly-donations");
+        const res = await client.get(`${BASE_URL}/api/admin/monthly-donations`);
         return res.data;
     },
 
@@ -207,7 +208,7 @@ export const adminApi = {
      * Get donation pipeline (Kanban)
      */
     getDonationPipeline: async () => {
-        const res = await client.get("/api/admin/donation-pipeline");
+        const res = await client.get(`${BASE_URL}/api/admin/donation-pipeline`);
         return res.data;
     },
 
@@ -215,7 +216,7 @@ export const adminApi = {
      * Get appointments
      */
     getAppointments: async () => {
-        const res = await client.get("/api/admin/appointments");
+        const res = await client.get(`${BASE_URL}/api/admin/appointments`);
         return res.data;
     },
 
@@ -223,7 +224,7 @@ export const adminApi = {
      * Create appointment
      */
     createAppointment: async (data) => {
-        const res = await client.post("/api/admin/appointments", data);
+        const res = await client.post(`${BASE_URL}/api/admin/appointments`, data);
         return res.data;
     },
 
@@ -231,7 +232,7 @@ export const adminApi = {
      * Get requests
      */
     getRequests: async () => {
-        const res = await client.get("/api/admin/requests");
+        const res = await client.get(`${BASE_URL}/api/admin/requests`);
         return res.data;
     },
 
@@ -239,7 +240,7 @@ export const adminApi = {
      * Get summary report
      */
     getReportSummary: async (params = {}) => {
-        const res = await client.get("/api/admin/reports/summary", { params });
+        const res = await client.get(`${BASE_URL}/api/admin/reports/summary`, { params });
         return res.data;
     },
 
@@ -247,7 +248,7 @@ export const adminApi = {
      * Get requests report
      */
     getReportRequests: async (params = {}) => {
-        const res = await client.get("/api/admin/reports/requests", { params });
+        const res = await client.get(`${BASE_URL}/api/admin/reports/requests`, { params });
         return res.data;
     },
 
@@ -255,54 +256,54 @@ export const adminApi = {
      * Get inventory report
      */
     getReportInventory: async (params = {}) => {
-        const res = await client.get("/api/admin/reports/inventory", { params });
+        const res = await client.get(`${BASE_URL}/api/admin/reports/inventory`, { params });
         return res.data;
     },
 
     // Donation Management
     getDonations: async () => {
         // Add timestamp to prevent caching
-        const res = await client.get(`/api/admin/donations?_t=${Date.now()}`);
+        const res = await client.get(`${BASE_URL}/api/admin/donations?_t=${Date.now()}`);
         return res.data;
     },
 
     createDonation: async (donationData) => {
-        const res = await client.post("/api/admin/donations", donationData);
+        const res = await client.post(`${BASE_URL}/api/admin/donations`, donationData);
         return res.data;
     },
 
     updateDonationStage: async (id, stage, organizationId) => {
-        const res = await client.put(`/api/admin/donations/${id}/stage`, { stage, organizationId });
+        const res = await client.put(`${BASE_URL}/api/admin/donations/${id}/stage`, { stage, organizationId });
         return res.data;
     },
 
     updateDonation: async (id, updates) => {
-        const res = await client.put(`/api/admin/donations/${id}`, updates);
+        const res = await client.put(`${BASE_URL}/api/admin/donations/${id}`, updates);
         return res.data;
     },
 
     deleteDonation: async (id) => {
-        const res = await client.delete(`/api/admin/donations/${id}`);
+        const res = await client.delete(`${BASE_URL}/api/admin/donations/${id}`);
         return res.data;
     },
 
     getDonationStats: async () => {
-        const res = await client.get("/api/admin/donations/stats");
+        const res = await client.get(`${BASE_URL}/api/admin/donations/stats`);
         return res.data;
     },
 
     updateDonationScreening: async (id, screeningData) => {
-        const res = await client.put(`/api/admin/donations/${id}/screening`, screeningData);
+        const res = await client.put(`${BASE_URL}/api/admin/donations/${id}/screening`, screeningData);
         return res.data;
     },
 
     updateDonationCollection: async (id, collectionData) => {
-        const res = await client.put(`/api/admin/donations/${id}/collection`, collectionData);
+        const res = await client.put(`${BASE_URL}/api/admin/donations/${id}/collection`, collectionData);
         return res.data;
     },
 
     updateDonationLabTests: async (id, labTestData) => {
-        const res = await client.put(`/api/admin/donations/${id}/lab-tests`, labTestData);
+        const res = await client.put(`${BASE_URL}/api/admin/donations/${id}/lab-tests`, labTestData);
         return res.data;
     },
 
@@ -311,7 +312,7 @@ export const adminApi = {
      */
     checkDonationByAppointment: async (appointmentId) => {
         try {
-            const res = await client.get("/api/admin/donations");
+            const res = await client.get(`${BASE_URL}/api/admin/donations`);
             const allDonations = res.data;
 
             // Search through all stages for donation with matching appointmentId

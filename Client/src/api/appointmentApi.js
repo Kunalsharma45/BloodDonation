@@ -1,5 +1,7 @@
 import client from './client';
 
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
 /**
  * Appointment API - Handles all appointment operations
  */
@@ -12,7 +14,7 @@ const appointmentApi = {
      * @param {string} status - 'UPCOMING', 'COMPLETED', 'CANCELLED', or 'ALL'
      */
     getMyAppointments: async (status = 'ALL') => {
-        const response = await client.get('/api/appointments/donor', {
+        const response = await client.get(`${BASE_URL}/api/appointments/donor`, {
             params: { status }
         });
         return response.data;
@@ -23,7 +25,7 @@ const appointmentApi = {
      * @param {object} data - { organizationId, dateTime, notes }
      */
     bookAppointment: async (data) => {
-        const response = await client.post('/api/appointments/donor', data);
+        const response = await client.post(`${BASE_URL}/api/appointments/donor`, data);
         return response.data;
     },
 
@@ -33,7 +35,7 @@ const appointmentApi = {
      * @param {string} reason
      */
     cancelAppointment: async (appointmentId, reason) => {
-        const response = await client.put(`/api/appointments/donor/${appointmentId}/cancel`, {
+        const response = await client.put(`${BASE_URL}/api/appointments/donor/${appointmentId}/cancel`, {
             reason
         });
         return response.data;
@@ -43,7 +45,7 @@ const appointmentApi = {
      * Get donor's donation history
      */
     getDonationHistory: async () => {
-        const response = await client.get('/api/appointments/donor/history');
+        const response = await client.get(`${BASE_URL}/api/appointments/donor/history`);
         return response.data;
     },
 
@@ -54,7 +56,7 @@ const appointmentApi = {
      * @param {object} params - { status, page, limit }
      */
     getOrgAppointments: async (params = {}) => {
-        const response = await client.get('/api/appointments/org', { params });
+        const response = await client.get(`${BASE_URL}/api/appointments/org`, { params });
         return response.data;
     },
 
@@ -63,7 +65,7 @@ const appointmentApi = {
      * @param {string} appointmentId
      */
     getAppointmentDetails: async (appointmentId) => {
-        const response = await client.get(`/api/appointments/org/${appointmentId}`);
+        const response = await client.get(`${BASE_URL}/api/appointments/org/${appointmentId}`);
         return response.data;
     },
 
@@ -73,7 +75,7 @@ const appointmentApi = {
      * @param {object} data - { donationSuccessful, unitsCollected, notes }
      */
     completeAppointment: async (appointmentId, data) => {
-        const response = await client.put(`/api/appointments/org/${appointmentId}/complete`, data);
+        const response = await client.put(`${BASE_URL}/api/appointments/org/${appointmentId}/complete`, data);
         return response.data;
     },
 
@@ -83,7 +85,7 @@ const appointmentApi = {
      * @param {object} data - { newDateTime, reason }
      */
     rescheduleAppointment: async (appointmentId, data) => {
-        const response = await client.put(`/api/appointments/org/${appointmentId}/reschedule`, data);
+        const response = await client.put(`${BASE_URL}/api/appointments/org/${appointmentId}/reschedule`, data);
         return response.data;
     },
 
@@ -93,7 +95,7 @@ const appointmentApi = {
      * @param {string} reason
      */
     cancelAppointmentOrg: async (appointmentId, reason) => {
-        const response = await client.put(`/api/appointments/org/${appointmentId}/cancel`, {
+        const response = await client.put(`${BASE_URL}/api/appointments/org/${appointmentId}/cancel`, {
             reason
         });
         return response.data;
@@ -106,7 +108,7 @@ const appointmentApi = {
      * @param {object} params - { status, organizationId, donorId, page, limit }
      */
     getAllAppointments: async (params = {}) => {
-        const response = await client.get('/api/appointments/admin/all', { params });
+        const response = await client.get(`${BASE_URL}/api/appointments/admin/all`, { params });
         return response.data;
     },
 
@@ -114,7 +116,7 @@ const appointmentApi = {
      * Get appointment statistics (admin)
      */
     getAppointmentStats: async () => {
-        const response = await client.get('/api/appointments/admin/stats');
+        const response = await client.get(`${BASE_URL}/api/appointments/admin/stats`);
         return response.data;
     }
 };
