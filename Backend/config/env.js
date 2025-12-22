@@ -4,7 +4,7 @@ dotenv.config();
 
 export const env = {
   port: process.env.PORT || 3000,
-  mongoUri: process.env.MONGODB_URI || "mongodb://localhost:27017/liforce",
+  mongoUri: process.env.MONGODB_URI || "mongodb://localhost:27017/liveblood",
   jwtSecret: process.env.JWT_SECRET || "dev-secret-change-me",
   jwtRefreshSecret:
     process.env.JWT_REFRESH_SECRET || "dev-refresh-secret-change-me",
