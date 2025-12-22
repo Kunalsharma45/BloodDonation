@@ -6,9 +6,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/liforc
 
 async function hideFromPipeline() {
     try {
-        console.log('🔌 Connecting to MongoDB...');
         await mongoose.connect(MONGODB_URI);
-        console.log('✅ Connected\n');
 
         // Find all donations with status "completed" in ready-storage or completed stage
         const donations = await Donation.find({
@@ -16,10 +14,8 @@ async function hideFromPipeline() {
             stage: { $in: ['completed', 'ready-storage'] }
         }).populate('organizationId', 'organizationType organizationName Name');
 
-        console.log(`📊 Found ${donations.length} donations to hide from READY FOR STORAGE\n`);
 
         if (donations.length === 0) {
-            console.log('✅ No donations to hide!');
             process.exit(0);
         }
 
@@ -35,13 +31,11 @@ async function hideFromPipeline() {
                         { _id: donation._id },
                         { $set: { status: 'stored' } }
                     );
-                    console.log(`✅ [BLOOD BANK] ${donation.donorName || 'Unknown'} → "stored"`);
                 } else {
                     await Donation.updateOne(
                         { _id: donation._id },
                         { $set: { status: 'used' } }
                     );
-                    console.log(`✅ [HOSPITAL] ${donation.donorName || 'Unknown'} → "used"`);
                 }
                 updated++;
             } catch (err) {
@@ -49,9 +43,6 @@ async function hideFromPipeline() {
             }
         }
 
-        console.log(`\n📈 Hidden ${updated} donations from pipeline`);
-        console.log(`✅ Complete!`);
-        console.log(`\n💡 Refresh browser (Ctrl+F5) - READY FOR STORAGE should be EMPTY!`);
 
         process.exit(0);
     } catch (error) {

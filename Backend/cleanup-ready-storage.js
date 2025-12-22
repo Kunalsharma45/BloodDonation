@@ -6,9 +6,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/liforc
 
 async function cleanupHospitalDonations() {
     try {
-        console.log('🔌 Connecting to MongoDB...');
         await mongoose.connect(MONGODB_URI);
-        console.log('✅ Connected to MongoDB\n');
 
         // Find all donations in ready-storage stage with status "completed"
         const donations = await Donation.find({
@@ -16,10 +14,8 @@ async function cleanupHospitalDonations() {
             status: 'completed'
         }).populate('organizationId', 'organizationType organizationName Name');
 
-        console.log(`📊 Found ${donations.length} donations in READY FOR STORAGE with status "completed"\n`);
 
         if (donations.length === 0) {
-            console.log('✅ No donations to clean up!');
             process.exit(0);
         }
 
@@ -30,7 +26,6 @@ async function cleanupHospitalDonations() {
             const org = donation.organizationId;
 
             if (!org) {
-                console.log(`⚠️  Skipping donation ${donation._id} - no organization found`);
                 continue;
             }
 
@@ -46,7 +41,6 @@ async function cleanupHospitalDonations() {
                 });
                 await donation.save();
                 hospitalCount++;
-                console.log(`✅ [HOSPITAL] ${org.organizationName || org.Name}: Donation ${donation._id} → "used"`);
             } else if (org.organizationType === 'BANK') {
                 // Mark as "stored" for blood banks
                 donation.status = 'stored';
@@ -59,15 +53,9 @@ async function cleanupHospitalDonations() {
                 });
                 await donation.save();
                 bloodBankCount++;
-                console.log(`✅ [BLOOD BANK] ${org.organizationName || org.Name}: Donation ${donation._id} → "stored"`);
             }
         }
 
-        console.log(`\n📈 Summary:`);
-        console.log(`   Hospital donations marked as "used": ${hospitalCount}`);
-        console.log(`   Blood bank donations marked as "stored": ${bloodBankCount}`);
-        console.log(`\n✅ Cleanup complete! READY FOR STORAGE column should now be empty.`);
-        console.log(`💡 Refresh your browser to see the changes.`);
 
         process.exit(0);
     } catch (error) {

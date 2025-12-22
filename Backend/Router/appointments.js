@@ -31,7 +31,7 @@ router.get("/donor", donorAuth, async (req, res) => {
 
         res.json(appointments);
     } catch (error) {
-        console.error("Error fetching donor appointments:", error);
+
         res.status(500).json({ message: "Failed to fetch appointments" });
     }
 });
@@ -75,7 +75,7 @@ router.post("/donor", donorAuth, async (req, res) => {
             appointment
         });
     } catch (error) {
-        console.error("Error booking appointment:", error);
+
         res.status(500).json({ message: "Failed to book appointment" });
     }
 });
@@ -114,7 +114,7 @@ router.put("/donor/:id/cancel", donorAuth, async (req, res) => {
             appointment
         });
     } catch (error) {
-        console.error("Error cancelling appointment:", error);
+
         res.status(500).json({ message: "Failed to cancel appointment" });
     }
 });
@@ -148,7 +148,7 @@ router.get("/donor/history", donorAuth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Error fetching donation history:", error);
+
         res.status(500).json({ message: "Failed to fetch donation history" });
     }
 });
@@ -176,10 +176,6 @@ router.get("/org", orgAuth, async (req, res) => {
             .limit(parseInt(limit))
             .lean();
 
-        console.log(`[Appointments API] Found ${appointments.length} appointments for org ${req.user.userId}`);
-        appointments.forEach((apt, index) => {
-            console.log(`  ${index + 1}. Status: ${apt.status}, Donor: ${apt.donorId?.Name || 'N/A'}, Date: ${apt.dateTime}`);
-        });
 
 
         const total = await Appointment.countDocuments(query);
@@ -194,7 +190,7 @@ router.get("/org", orgAuth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Error fetching org appointments:", error);
+
         res.status(500).json({ message: "Failed to fetch appointments" });
     }
 });
@@ -212,7 +208,7 @@ router.delete("/org/cleanup-duplicates", orgAuth, async (req, res) => {
             .populate("donorId", "Name")
             .sort({ createdAt: 1 }); // Oldest first
 
-        console.log(`Found ${allAppointments.length} total appointments for org ${req.user.userId}`);
+
 
         // Group by donorId + requestId to find duplicates
         const groups = {};
@@ -231,14 +227,14 @@ router.delete("/org/cleanup-duplicates", orgAuth, async (req, res) => {
         duplicateGroups.forEach(([key, appointments]) => {
             // Keep the first (oldest) appointment, mark rest for deletion
             const [keep, ...duplicates] = appointments;
-            console.log(`Duplicate group ${key}: Keeping ${keep._id}, ${duplicates.length} duplicates`);
+
             toDelete.push(...duplicates.map(d => d._id));
         });
 
         if (dryRun === 'false') {
             // Actually delete
             const result = await Appointment.deleteMany({ _id: { $in: toDelete } });
-            console.log(`✅ Deleted ${result.deletedCount} duplicate appointments`);
+
 
             res.json({
                 message: `Deleted ${result.deletedCount} duplicate appointments`,
@@ -264,7 +260,7 @@ router.delete("/org/cleanup-duplicates", orgAuth, async (req, res) => {
             });
         }
     } catch (error) {
-        console.error("Error cleaning up duplicates:", error);
+
         res.status(500).json({ message: "Failed to clean up duplicates" });
     }
 });
@@ -292,7 +288,7 @@ router.get("/org/:id", orgAuth, async (req, res) => {
 
         res.json(appointment);
     } catch (error) {
-        console.error("Error fetching appointment:", error);
+
         res.status(500).json({ message: "Failed to fetch appointment" });
     }
 });
@@ -332,7 +328,7 @@ router.put("/org/:id/complete", orgAuth, async (req, res) => {
             appointment
         });
     } catch (error) {
-        console.error("Error completing appointment:", error);
+
         res.status(500).json({ message: "Failed to complete appointment" });
     }
 });
@@ -385,7 +381,7 @@ router.put("/org/:id/reschedule", orgAuth, async (req, res) => {
             appointment
         });
     } catch (error) {
-        console.error("Error rescheduling appointment:", error);
+
         res.status(500).json({ message: "Failed to reschedule appointment" });
     }
 });
@@ -423,7 +419,7 @@ router.put("/org/:id/cancel", orgAuth, async (req, res) => {
             appointment
         });
     } catch (error) {
-        console.error("Error cancelling appointment:", error);
+
         res.status(500).json({ message: "Failed to cancel appointment" });
     }
 });
@@ -464,7 +460,7 @@ router.get("/admin/all", adminAuth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Error fetching all appointments:", error);
+
         res.status(500).json({ message: "Failed to fetch appointments" });
     }
 });
@@ -509,7 +505,7 @@ router.get("/admin/stats", adminAuth, async (req, res) => {
             successRate: parseFloat(successRate)
         });
     } catch (error) {
-        console.error("Error fetching appointment stats:", error);
+
         res.status(500).json({ message: "Failed to fetch statistics" });
     }
 });

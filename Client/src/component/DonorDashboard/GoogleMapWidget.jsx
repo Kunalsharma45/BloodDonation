@@ -39,7 +39,6 @@ const GoogleMapWidget = () => {
                 const res = await client.get("/api/donor/requests/nearby", {
                     params: { lat: coords.lat, lng: coords.lng, km: 10 },
                 });
-                console.log('🎨 Rendering, requests.length:', res.data.requests?.length || 0, 'requests:', res.data.requests || []);
                 setRequests(res.data.requests || []);
             } catch (err) {
                 console.error('Failed to load requests:', err);

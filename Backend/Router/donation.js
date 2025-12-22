@@ -94,7 +94,7 @@ router.get("/", adminOrOrg, async (req, res) => {
 
         res.json(grouped);
     } catch (error) {
-        console.error("Error fetching donations:", error);
+
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
@@ -172,7 +172,7 @@ router.post("/", adminOrOrg, async (req, res) => {
             },
         });
     } catch (error) {
-        console.error("Error creating donation:", error);
+
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
@@ -217,7 +217,7 @@ router.put("/:id/stage", adminOrOrg, async (req, res) => {
             },
         });
     } catch (error) {
-        console.error("Error updating donation stage:", error);
+
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
@@ -271,7 +271,7 @@ router.put("/:id/screening", adminOrOrg, async (req, res) => {
             },
         });
     } catch (error) {
-        console.error("Error updating screening data:", error);
+
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
@@ -328,7 +328,7 @@ router.put("/:id/collection", adminOrOrg, async (req, res) => {
             },
         });
     } catch (error) {
-        console.error("Error updating collection data:", error);
+
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
@@ -395,7 +395,7 @@ router.put("/:id/lab-tests", adminOrOrg, async (req, res) => {
             );
         } else {
             // Tests failed - mark as rejected and reopen request
-            console.log(`⚠️ Lab tests FAILED for donation ${donation._id}. Failed tests: ${failedTests.join(', ')}`);
+
 
             // Mark donation as rejected
             await donation.moveToStage(
@@ -418,7 +418,7 @@ router.put("/:id/lab-tests", adminOrOrg, async (req, res) => {
                         appointment.completedAt = new Date();
                         appointment.notes = `Lab tests failed: ${failedTests.join(', ')}`;
                         await appointment.save();
-                        console.log(`✅ Appointment ${appointment._id} marked as REJECTED`);
+
 
                         // Reopen the blood request if it exists
                         if (appointment.requestId) {
@@ -431,12 +431,11 @@ router.put("/:id/lab-tests", adminOrOrg, async (req, res) => {
                                 request.notes = `Previous donor's lab tests failed (${failedTests.join(', ')}). Request reopened for new assignment.`;
                                 await request.save();
 
-                                console.log(`✅ Request ${request._id} reopened - ready for new donor assignment`);
                             }
                         }
                     }
                 } catch (error) {
-                    console.error("Error handling failed test cleanup:", error);
+                    // Error ignored
                 }
             }
         }
@@ -457,7 +456,7 @@ router.put("/:id/lab-tests", adminOrOrg, async (req, res) => {
             failedTests: allTestsPassed ? [] : failedTests
         });
     } catch (error) {
-        console.error("Error updating lab test data:", error);
+
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
@@ -505,7 +504,7 @@ router.put("/:id", adminOrOrg, async (req, res) => {
             donation,
         });
     } catch (error) {
-        console.error("Error updating donation:", error);
+
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
@@ -527,7 +526,7 @@ router.delete("/:id", adminOrOrg, async (req, res) => {
 
         res.json({ message: "Donation aborted successfully" });
     } catch (error) {
-        console.error("Error deleting donation:", error);
+
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
@@ -562,7 +561,7 @@ router.get("/stats", adminOrOrg, async (req, res) => {
             byBloodGroup: bloodGroupStats,
         });
     } catch (error) {
-        console.error("Error fetching donation stats:", error);
+
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });

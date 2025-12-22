@@ -42,6 +42,11 @@ app.use(["/api/login", "/api/signup"], authLimiter);
 
 connectdb();
 
+// api health
+app.get("/api/health", (req, res) => {
+    res.status(200).json({ status: "OK" });
+})
+
 // Routes
 app.use("/api", auth);
 app.use("/api", ForgotPassword);
@@ -53,7 +58,6 @@ app.use("/api/geo", geoRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/health", (req, res) => res.status(200).json({ status: "OK" })); // Quick health check
 // app.use("/health", healthRoutes); // Disabling external healthRoutes file for now to be simple
 
 // Fallback 404
@@ -67,6 +71,10 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ message: "Internal server error" });
 });
 
-app.listen(env.port, () => {
-  console.log(`Server running at http://localhost:${env.port}`);
-});
+if (process.env.NODE_ENV !== "production") {
+  app.listen(env.port, () => {
+    console.log(`Server running at http://localhost:${env.port}`);
+  });
+}
+
+export default app;

@@ -4,9 +4,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/liforc
 
 async function directUpdate() {
     try {
-        console.log('🔌 Connecting to MongoDB...');
         await mongoose.connect(MONGODB_URI);
-        console.log('✅ Connected\n');
 
         // Direct MongoDB update - bypass Mongoose validation
         const db = mongoose.connection.db;
@@ -18,9 +16,6 @@ async function directUpdate() {
             { $set: { status: 'used' } }
         );
 
-        console.log(`📊 Updated ${result.modifiedCount} donations`);
-        console.log(`✅ Changed status from "completed" to "used"`);
-        console.log(`\n💡 Refresh browser - READY FOR STORAGE should be empty!`);
 
         process.exit(0);
     } catch (error) {

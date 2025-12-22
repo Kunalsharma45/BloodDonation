@@ -30,8 +30,6 @@ const simpleOrgAuth = (req, res, next) => {
  */
 router.post("/org", simpleOrgAuth, async (req, res) => {
     try {
-        console.log("📝 Creating request for user:", req.user.userId);
-        console.log("📝 Request body:", req.body);
 
         const {
             bloodGroup,
@@ -57,7 +55,6 @@ router.post("/org", simpleOrgAuth, async (req, res) => {
             return res.status(404).json({ message: "Organization not found" });
         }
 
-        console.log("✅ Organization found:", org.organizationName);
 
         // Build request with minimal required fields
         const request = new Request({
@@ -84,7 +81,6 @@ router.post("/org", simpleOrgAuth, async (req, res) => {
 
         await request.save();
 
-        console.log("✅ Request created successfully:", request._id);
 
         res.status(201).json({
             message: "Blood request created successfully",

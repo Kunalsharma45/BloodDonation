@@ -5,9 +5,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/liforc
 
 async function restoreOriginal() {
     try {
-        console.log('🔌 Connecting to MongoDB...');
         await mongoose.connect(MONGODB_URI);
-        console.log('✅ Connected\n');
 
         // Find all donations with status "used" or "stored" and restore them to "completed"
         const result = await Donation.updateMany(
@@ -20,9 +18,6 @@ async function restoreOriginal() {
             }
         );
 
-        console.log(`📊 Restored ${result.modifiedCount} donations to status "completed"`);
-        console.log(`✅ Original behavior restored!`);
-        console.log(`\n💡 Refresh your browser - donations should now appear in READY FOR STORAGE column`);
 
         process.exit(0);
     } catch (error) {

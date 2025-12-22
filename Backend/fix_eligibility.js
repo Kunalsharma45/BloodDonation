@@ -6,7 +6,6 @@ dotenv.config();
 const fixEligibility = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/BloodDonation");
-        console.log("Connected.");
 
         // Clear lastDonationDate to make everyone eligible
         // Also ensure bloodGroup is set (sample default O+)
@@ -24,7 +23,6 @@ const fixEligibility = async () => {
             { $set: { bloodGroup: "O+" } }
         );
 
-        console.log(`Reset eligibility for ${res.modifiedCount} users.`);
 
     } catch (err) {
         console.error(err);
