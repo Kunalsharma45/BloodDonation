@@ -47,7 +47,7 @@ const WhoWeServeSection = () => {
     };
 
     return (
-        <section id="serve" className="section-base tint-cool max-w-7xl mx-auto px-12 relative z-10">
+        <section id="serve" className="section-base tint-cool max-w-7xl mx-auto px-6 relative z-10">
             <div className="separator-glow"></div>
             <div className="text-center mb-20">
                 <h2 className="text-5xl font-black mb-6">

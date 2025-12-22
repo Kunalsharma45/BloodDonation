@@ -32,9 +32,9 @@ const ThreeJSParticles = () => {
 
         const material = new THREE.PointsMaterial({
             color: '#ff4d4d',
-            size: 0.018,
+            size: 0.035,
             transparent: true,
-            opacity: 0.75,
+            opacity: 0.9,
         });
 
         const mesh = new THREE.Points(geometry, material);

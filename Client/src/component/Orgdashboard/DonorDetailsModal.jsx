@@ -168,6 +168,7 @@ const DonorDetailsModal = ({ donation, onClose, onNext }) => {
 
                         return shouldShowButton;
                     })() && (
+                        
                             <button
                                 onClick={() => {
                                     if (window.confirm('Move this donor to SCREENING stage?')) {

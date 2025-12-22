@@ -73,7 +73,7 @@ const StoriesCarousel = () => {
 
     return (
         <section id="stories" className="section-base relative z-10 overflow-hidden py-24 bg-slate-50/50">
-            <div className="max-w-[1400px] mx-auto px-8 md:px-12 mb-16 relative z-20">
+            <div className="max-w-[1400px] mx-auto px-4 md:px-6 mb-16 relative z-20">
                 <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-[1.1]">
                     Where Technology<span className="text-red-500 font-serif"> Meets Heartbeats.</span>
                 </h2>

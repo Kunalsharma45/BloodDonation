@@ -13,6 +13,7 @@ import Appointment from "../modules/Appointment.js";
 import ProfileUpdate from "../modules/ProfileUpdate.js";
 import Notification from "../modules/Notification.js";
 import AuditLog from "../modules/AuditLog.js";
+import ProfileUpdateRequest from "../modules/ProfileUpdateRequest.js";
 
 const router = express.Router();
 
@@ -1121,6 +1122,109 @@ router.put("/alerts/:id/resolve", auth([ROLES.ADMIN]), async (req, res) => {
     res.json({ message: "Alert resolved" });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ============ ORGANIZATION PROFILE UPDATE REQUESTS ============
+// Get All Pending Organization Profile Update Requests
+router.get("/org-profile-update-requests", auth([ROLES.ADMIN]), async (req, res) => {
+  try {
+    const requests = await ProfileUpdateRequest.find({ status: 'PENDING' })
+      .populate("organizationId", "Name organizationName Email PhoneNumber City organizationType")
+      .sort({ createdAt: 1 })
+      .lean();
+
+    res.json(requests);
+  } catch (err) {
+    console.error("Get org profile requests error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Approve Organization Profile Update Request
+router.put("/org-profile-update-requests/:id/approve", auth([ROLES.ADMIN]), async (req, res) => {
+  try {
+    const requestId = req.params.id;
+
+    const updateRequest = await ProfileUpdateRequest.findById(requestId);
+    if (!updateRequest) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    if (updateRequest.status !== 'PENDING') {
+      return res.status(400).json({ message: "Request already processed" });
+    }
+
+    // Apply the requested changes to the organization
+    const { organizationName, Name, Email, PhoneNumber, City, licenseNo, State, Country } = updateRequest.requestedChanges;
+
+    const updateFields = {};
+    if (organizationName) updateFields.organizationName = organizationName;
+    if (Name) updateFields.Name = Name;
+    if (Email) updateFields.Email = Email;
+    if (PhoneNumber) updateFields.PhoneNumber = PhoneNumber;
+    if (City) updateFields.City = City;
+    if (licenseNo) updateFields.licenseNo = licenseNo;
+    if (State) updateFields.State = State;
+    if (Country) updateFields.Country = Country;
+
+    await User.findByIdAndUpdate(updateRequest.organizationId, updateFields);
+
+    // Mark request as approved
+    updateRequest.status = 'APPROVED';
+    updateRequest.reviewedBy = req.user.userId;
+    updateRequest.reviewedAt = new Date();
+    await updateRequest.save();
+
+    await logAction({
+      adminId: req.user.userId,
+      action: "ORG_PROFILE_UPDATE_APPROVE",
+      targetId: updateRequest.organizationId,
+      targetType: "User",
+      details: { requestId: updateRequest._id, changes: updateFields },
+    });
+
+    res.json({ message: "Profile update request approved and applied" });
+  } catch (err) {
+    console.error("Approve org profile request error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Reject Organization Profile Update Request
+router.put("/org-profile-update-requests/:id/reject", auth([ROLES.ADMIN]), async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const { reason } = req.body;
+
+    const updateRequest = await ProfileUpdateRequest.findById(requestId);
+    if (!updateRequest) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    if (updateRequest.status !== 'PENDING') {
+      return res.status(400).json({ message: "Request already processed" });
+    }
+
+    // Mark request as rejected
+    updateRequest.status = 'REJECTED';
+    updateRequest.reviewedBy = req.user.userId;
+    updateRequest.reviewedAt = new Date();
+    updateRequest.rejectionReason = reason || "No reason provided";
+    await updateRequest.save();
+
+    await logAction({
+      adminId: req.user.userId,
+      action: "ORG_PROFILE_UPDATE_REJECT",
+      targetId: updateRequest.organizationId,
+      targetType: "User",
+      details: { requestId: updateRequest._id, reason },
+    });
+
+    res.json({ message: "Profile update request rejected" });
+  } catch (err) {
+    console.error("Reject org profile request error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

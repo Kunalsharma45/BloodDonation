@@ -271,8 +271,8 @@ export const adminApi = {
         return res.data;
     },
 
-    updateDonationStage: async (id, stage) => {
-        const res = await client.put(`/api/admin/donations/${id}/stage`, { stage });
+    updateDonationStage: async (id, stage, organizationId) => {
+        const res = await client.put(`/api/admin/donations/${id}/stage`, { stage, organizationId });
         return res.data;
     },
 

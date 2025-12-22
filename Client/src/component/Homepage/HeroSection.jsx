@@ -28,7 +28,7 @@ const HeroSection = () => {
     ];
 
     return (
-        <header className="relative z-10 max-w-[1400px] mx-auto px-8 md:px-12 pt-12 pb-32">
+        <header className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-6 pt-12 pb-32">
             <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div className="reveal text-left">
                     <h1 className="text-5xl md:text-7xl font-black leading-[1.05] mb-6 text-slate-800 tracking-tighter">

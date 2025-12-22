@@ -3,7 +3,7 @@ import React from 'react';
 const PremiumFooter = () => {
     return (
         <footer className="bg-slate-950 pt-32 pb-16 relative z-10 border-t border-slate-800">
-            <div className="max-w-7xl mx-auto px-12 grid grid-cols-1 md:grid-cols-4 gap-20 mb-32">
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-20 mb-32">
                 <div className="col-span-1 md:col-span-2">
                     <div className="text-4xl font-black mb-10 tracking-tighter text-white">
                         LIF<span className="text-red-500">ORCE</span>

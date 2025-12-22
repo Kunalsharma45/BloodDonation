@@ -12,7 +12,7 @@ const PremiumNavbar = () => {
     };
 
     return (
-        <nav className="flex justify-between items-center px-8 md:px-12 py-8 w-full max-w-[1400px] mx-auto relative z-20">
+        <nav className="flex justify-between items-center px-4 md:px-6 py-8 w-full max-w-[1400px] mx-auto relative z-20">
             <div className="text-3xl font-black tracking-tighter flex items-center gap-3">
                 <div className="w-10 h-10 bg-red-500 rounded-2xl flex items-center justify-center shadow-xl rotate-12">
                     <span className="text-white text-lg">🩸</span>

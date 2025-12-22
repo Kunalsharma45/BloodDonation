@@ -39,7 +39,7 @@ const ImpactMetrics = () => {
         <section
             ref={sectionRef}
             id="impact"
-            className="section-base tint-warm max-w-none mx-auto px-12 relative z-10 border-y border-red-100/50"
+            className="section-base tint-warm max-w-none mx-auto px-6 relative z-10 border-y border-red-100/50"
         >
             <div className="max-w-7xl mx-auto">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-12 text-center">

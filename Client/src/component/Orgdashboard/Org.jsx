@@ -12,12 +12,18 @@ import AnalyticsTab from './AnalyticsTab';
 import ProfileTab from './ProfileTab';
 import MyRequestsPage from './MyRequestsPage';
 import IncomingRequestsPage from './IncomingRequestsPage';
-import DonationPipelineTab from './DonationPipelineTab';
+import DonationPipelineTab from './DonationPipelineTab'; // Hospital pipeline
+import BloodBankDonationPipeline from './BloodBankDonationPipeline'; // Blood bank pipeline
 import NotificationDropdown from '../DonorDashboard/NotificationDropdown';
 import { getOrgTypeLabel } from './orgUtils';
 
 const Org = () => {
     const { user } = useAuth();
+    const isBloodBank = user?.organizationType === 'BANK';
+
+    // Choose the appropriate pipeline component based on organization type
+    const DonationPipeline = isBloodBank ? BloodBankDonationPipeline : DonationPipelineTab;
+
     return (
         <div>
             <div className='bg-black'>
@@ -44,7 +50,7 @@ const Org = () => {
                             <Route index element={<Navigate to="dashboard" replace />} />
                             <Route path="dashboard" element={<OrgOverview />} />
                             <Route path="inventory" element={<InventoryView />} />
-                            <Route path="donations" element={<DonationPipelineTab />} />
+                            <Route path="donations" element={<DonationPipeline />} />
                             <Route path="requests" element={<MyRequestsPage />} />
                             <Route path="incoming" element={<IncomingRequestsPage />} />
                             <Route path="appointments" element={<AppointmentsTab />} />

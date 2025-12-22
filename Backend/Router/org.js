@@ -9,6 +9,7 @@ import User from "../modules/User.js";
 import Appointment from "../modules/Appointment.js";
 import Camp from "../modules/Camp.js";
 import Donation from "../modules/Donation.js";
+import ProfileUpdateRequest from "../modules/ProfileUpdateRequest.js";
 
 const router = express.Router();
 
@@ -897,8 +898,9 @@ router.get("/camps/participants", auth([ROLES.ORGANIZATION]), async (req, res) =
       dayEnd.setHours(23, 59, 59, 999);
       query.date = { $gte: dayStart, $lte: dayEnd };
     } else {
-      // Default to showing participants from ONGOING camps
-      query.status = "ONGOING";
+      // Default to showing participants from PLANNED and ONGOING camps
+      // This allows donors to appear in pipeline even before camp is marked as ONGOING
+      query.status = { $in: ["PLANNED", "ONGOING"] };
     }
 
     const camps = await Camp.find(query)
@@ -1371,6 +1373,85 @@ router.get("/analytics", auth([ROLES.ORGANIZATION]), async (req, res) => {
     res.json(analytics);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ============ PROFILE UPDATE REQUESTS ============
+// Submit Profile Update Request (Organizations)
+router.post("/profile-update-request", auth([ROLES.ORGANIZATION]), async (req, res) => {
+  try {
+    const orgId = req.user.userId;
+    const { organizationName, Name, Email, PhoneNumber, City, licenseNo, State, Country } = req.body;
+
+    // Check if there's already a pending request
+    const existingRequest = await ProfileUpdateRequest.findOne({
+      organizationId: orgId,
+      status: 'PENDING'
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({
+        message: "You already have a pending profile update request. Please wait for admin approval."
+      });
+    }
+
+    // Get current organization data
+    const org = await User.findById(orgId).select("organizationName Name Email PhoneNumber City licenseNo State Country").lean();
+
+    if (!org) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+
+    // Create profile update request
+    const updateRequest = await ProfileUpdateRequest.create({
+      organizationId: orgId,
+      requestedChanges: {
+        organizationName,
+        Name,
+        Email,
+        PhoneNumber,
+        City,
+        licenseNo,
+        State,
+        Country
+      },
+      currentValues: {
+        organizationName: org.organizationName,
+        Name: org.Name,
+        Email: org.Email,
+        PhoneNumber: org.PhoneNumber,
+        City: org.City,
+        licenseNo: org.licenseNo,
+        State: org.State,
+        Country: org.Country
+      },
+      status: 'PENDING'
+    });
+
+    res.status(201).json({
+      message: "Profile update request submitted successfully. Waiting for admin approval.",
+      requestId: updateRequest._id
+    });
+  } catch (err) {
+    console.error("Profile update request error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Get Pending Profile Update Request (Organizations)
+router.get("/profile-update-request", auth([ROLES.ORGANIZATION]), async (req, res) => {
+  try {
+    const orgId = req.user.userId;
+
+    const pendingRequest = await ProfileUpdateRequest.findOne({
+      organizationId: orgId,
+      status: 'PENDING'
+    }).lean();
+
+    res.json(pendingRequest);
+  } catch (err) {
+    console.error("Get pending request error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

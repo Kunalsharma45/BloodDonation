@@ -11,7 +11,7 @@ import DonorDetailsModal from './DonorDetailsModal';
 import BloodCollectionModal from './BloodCollectionModal';
 import LabTestingModal from './LabTestingModal';
 
-const DonationPipelineTab = () => {
+const BloodBankDonationPipeline = () => {
     const { user } = useAuth();
     const [donationColumns, setDonationColumns] = useState({
         'new-donors': {
@@ -79,13 +79,29 @@ const DonationPipelineTab = () => {
 
     const fetchDonations = async () => {
         try {
-            // Fetch appointments and existing donations
-            const [appointmentsData, donationsData] = await Promise.all([
+            // Blood banks fetch: appointments, donations, AND camp participants
+            // Hospitals fetch: appointments and donations only
+            const isBloodBank = user?.organizationType === 'BANK';
+
+            const promises = [
                 orgApi.getAppointments(),
                 adminApi.getDonations().catch(() => ({ 'new-donors': { items: [] }, 'screening': { items: [] }, 'in-progress': { items: [] }, 'completed': { items: [] }, 'ready-storage': { items: [] } }))
-            ]);
+            ];
+
+            // Only blood banks can have donation camps
+            if (isBloodBank) {
+                promises.push(orgApi.getCampParticipants().catch(() => []));
+            }
+
+            const results = await Promise.all(promises);
+            const appointmentsData = results[0];
+            const donationsData = results[1];
+            const campParticipants = isBloodBank ? results[2] : [];
 
             console.log('Raw appointments data:', appointmentsData);
+            if (isBloodBank) {
+                console.log('Camp participants (Blood Bank only):', campParticipants);
+            }
 
             // Handle both response formats for appointments
             const appointmentsArray = Array.isArray(appointmentsData)
@@ -113,6 +129,7 @@ const DonationPipelineTab = () => {
                 if (stage && stage.items) {
                     stage.items.forEach(item => {
                         if (item.appointmentId) existingDonationIds.add(item.appointmentId.toString());
+                        if (item.campParticipantId) existingDonationIds.add(item.campParticipantId);
                     });
                 }
             });
@@ -161,6 +178,30 @@ const DonationPipelineTab = () => {
 
             console.log('Filtered upcoming appointments for pipeline:', upcomingAppointments.length);
 
+            // Convert Camp Participants to NEW DONORS (BLOOD BANKS ONLY)
+            // This follows the same pattern as appointments in hospital pipeline
+            const campItems = isBloodBank ? (campParticipants || [])
+                .filter(p => !existingDonationIds.has(`${p._id}_${p.campId}`))
+                .map(p => ({
+                    id: `${p._id}_${p.campId}`,
+                    donorId: p._id,
+                    name: p.Name,
+                    group: p.bloodGroup,
+                    phone: p.PhoneNumber || 'Not provided',
+                    email: p.Email,
+                    date: new Date(),
+                    isToday: true,
+                    notes: `From Camp: ${p.campTitle}`,
+                    stage: 'new-donors',
+                    status: 'Active',
+                    campParticipantId: `${p._id}_${p.campId}`,
+                    campId: p.campId,
+                    fromCamp: true,
+                    isAttended: p.isAttended
+                })) : [];
+
+            console.log('Camp participants for pipeline:', campItems.length);
+
             // Add isToday flag to all existing donations from backend
             Object.keys(donationsByStage).forEach(stage => {
                 if (donationsByStage[stage].items) {
@@ -171,13 +212,14 @@ const DonationPipelineTab = () => {
                 }
             });
 
-            // Merge everything into columns
+            // Merge everything into columns (same as hospital: appointments + existing donations)
+            // Blood banks also include camp participants
             const newColumns = {
                 'new-donors': {
                     id: 'new-donors',
                     title: 'NEW DONORS',
                     color: 'from-red-50 to-red-100/50',
-                    items: [...upcomingAppointments, ...(donationsByStage['new-donors']?.items || [])]
+                    items: [...upcomingAppointments, ...campItems, ...(donationsByStage['new-donors']?.items || [])]
                 },
                 'screening': donationsByStage['screening'] || { id: 'screening', title: 'SCREENING', color: 'from-blue-50 to-blue-100/50', items: [] },
                 'in-progress': donationsByStage['in-progress'] || { id: 'in-progress', title: 'IN PROGRESS', color: 'from-yellow-50 to-yellow-100/50', items: [] },
@@ -413,9 +455,9 @@ const DonationPipelineTab = () => {
         try {
             const movedItem = sourceCol.items[source.index];
 
-            // Check if this is an appointment being moved (from NEW DONORS)
-            if (movedItem.fromAppointment && source.droppableId === 'new-donors') {
-                console.log('Moving appointment to donation pipeline, creating donation first...');
+            // Check if this is an appointment or camp participant being moved (from NEW DONORS)
+            if ((movedItem.fromAppointment || movedItem.fromCamp) && source.droppableId === 'new-donors') {
+                console.log(`Moving ${movedItem.fromCamp ? 'camp participant' : 'appointment'} to donation pipeline, creating donation first...`);
 
                 // Create a donation record
                 const donationData = {
@@ -424,10 +466,17 @@ const DonationPipelineTab = () => {
                     phone: movedItem.phone,
                     email: movedItem.email,
                     notes: movedItem.notes,
-                    appointmentId: movedItem.appointmentId || movedItem._id,
-                    donorId: movedItem.donorId,
                     organizationId: user._id || user.userId
                 };
+
+                if (movedItem.fromAppointment) {
+                    donationData.appointmentId = movedItem.appointmentId || movedItem._id;
+                    donationData.donorId = movedItem.donorId;
+                } else if (movedItem.fromCamp) {
+                    donationData.campId = movedItem.campId;
+                    donationData.campParticipantId = movedItem.campParticipantId;
+                    donationData.donorId = movedItem.donorId;
+                }
 
                 try {
                     const newDonation = await adminApi.createDonation(donationData);
@@ -533,8 +582,7 @@ const DonationPipelineTab = () => {
                         </div>
                     </div>
                 </div>
-            )
-            }
+            )}
 
             {/* Kanban Board */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
@@ -672,311 +720,363 @@ const DonationPipelineTab = () => {
             </div>
 
             {/* New Donation Modal */}
-            {
-                showAddDonationModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                            <div className="p-6 border-b border-gray-100">
-                                <h3 className="text-lg font-bold text-gray-800">Register New Donor</h3>
-                                <p className="text-sm text-gray-500 mt-1">Add a new donor to the donation pipeline</p>
-                            </div>
-                            <div className="p-6 space-y-4">
-                                {/* Donor Search */}
-                                <div className="relative">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                                        <Search size={16} />
-                                        Search Existing Donor or Enter New
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={donorSearchTerm}
-                                        onChange={(e) => {
-                                            setDonorSearchTerm(e.target.value);
-                                            setNewDonation({ ...newDonation, donorName: e.target.value });
-                                        }}
-                                        placeholder="Search by name, email, or phone..."
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none"
-                                    />
+            {showAddDonationModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="p-6 border-b border-gray-100">
+                            <h3 className="text-lg font-bold text-gray-800">Register New Donor</h3>
+                            <p className="text-sm text-gray-500 mt-1">Add a new donor to the donation pipeline</p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            {/* Donor Search */}
+                            <div className="relative">
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                    <Search size={16} />
+                                    Search Existing Donor or Enter New
+                                </label>
+                                <input
+                                    type="text"
+                                    value={donorSearchTerm}
+                                    onChange={(e) => {
+                                        setDonorSearchTerm(e.target.value);
+                                        setNewDonation({ ...newDonation, donorName: e.target.value });
+                                    }}
+                                    placeholder="Search by name, email, or phone..."
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none"
+                                />
 
-                                    {/* Search Results Dropdown */}
-                                    {donorSearchResults.length > 0 && (
-                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                            {donorSearchResults.map((donor) => (
-                                                <button
-                                                    key={donor._id}
-                                                    type="button"
-                                                    onClick={() => selectDonor(donor)}
-                                                    className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-0 transition flex items-center gap-3"
-                                                >
-                                                    <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold">
-                                                        {donor.Name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                {/* Search Results Dropdown */}
+                                {donorSearchResults.length > 0 && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                        {donorSearchResults.map((donor) => (
+                                            <button
+                                                key={donor._id}
+                                                type="button"
+                                                onClick={() => selectDonor(donor)}
+                                                className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-0 transition flex items-center gap-3"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold">
+                                                    {donor.Name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="font-semibold text-gray-800">{donor.Name}</div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {donor.bloodGroup} • {donor.Email}
+                                                        {donor.lastDonationDate && (
+                                                            <span className="ml-2">
+                                                                Last: {new Date(donor.lastDonationDate).toLocaleDateString()}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    <div className="flex-1">
-                                                        <div className="font-semibold text-gray-800">{donor.Name}</div>
-                                                        <div className="text-xs text-gray-500">
-                                                            {donor.bloodGroup} • {donor.Email}
-                                                            {donor.lastDonationDate && (
-                                                                <span className="ml-2">
-                                                                    Last: {new Date(donor.lastDonationDate).toLocaleDateString()}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {searching && (
-                                        <div className="absolute right-3 top-9 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                                        </div>
-                                    )}
-
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        {donorSearchResults.length > 0
-                                            ? `Found ${donorSearchResults.length} existing donor(s)`
-                                            : donorSearchTerm.length >= 2 && !searching
-                                                ? 'No existing donors found - will create new'
-                                                : 'Start typing to search existing donors'}
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
-                                    <select
-                                        value={newDonation.bloodGroup}
-                                        onChange={(e) => setNewDonation({ ...newDonation, bloodGroup: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
-                                    >
-                                        {bloodGroups.map((group) => (
-                                            <option key={group} value={group}>{group}</option>
+                                                </div>
+                                            </button>
                                         ))}
-                                    </select>
-                                </div>
-                                <div className="relative">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                    <input
-                                        type="tel"
-                                        value={newDonation.phone}
-                                        onChange={(e) => setNewDonation({ ...newDonation, phone: e.target.value })}
-                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 outline-none ${phoneExists
-                                            ? 'border-yellow-300 focus:ring-yellow-100 bg-yellow-50'
-                                            : 'border-gray-200 focus:ring-red-100'
-                                            }`}
-                                        placeholder="1234567890"
-                                    />
-                                    {checkingPhone && (
-                                        <div className="absolute right-3 top-9 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                                        </div>
-                                    )}
-                                    {phoneExists && (
-                                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 text-xs text-yellow-800">
-                                                    <User size={14} />
-                                                    <span>
-                                                        <strong>{phoneExists.Name}</strong> already exists with this phone
-                                                    </span>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => selectDonor(phoneExists)}
-                                                    className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                                                >
-                                                    Use Existing
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="relative">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                                    <input
-                                        type="email"
-                                        value={newDonation.email}
-                                        onChange={(e) => setNewDonation({ ...newDonation, email: e.target.value })}
-                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 outline-none ${emailExists
-                                            ? 'border-yellow-300 focus:ring-yellow-100 bg-yellow-50'
-                                            : 'border-gray-200 focus:ring-red-100'
-                                            }`}
-                                        placeholder="john@example.com"
-                                    />
-                                    {checkingEmail && (
-                                        <div className="absolute right-3 top-9 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                                        </div>
-                                    )}
-                                    {emailExists && (
-                                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 text-xs text-yellow-800">
-                                                    <User size={14} />
-                                                    <span>
-                                                        <strong>{emailExists.Name}</strong> already exists with this email
-                                                    </span>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => selectDonor(emailExists)}
-                                                    className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                                                >
-                                                    Use Existing
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                    <textarea
-                                        value={newDonation.notes}
-                                        onChange={(e) => setNewDonation({ ...newDonation, notes: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
-                                        rows="3"
-                                        placeholder="First time donor, no medical history..."
-                                    />
-                                </div>
+                                    </div>
+                                )}
+
+                                {searching && (
+                                    <div className="absolute right-3 top-9 text-gray-400">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                    </div>
+                                )}
+
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {donorSearchResults.length > 0
+                                        ? `Found ${donorSearchResults.length} existing donor(s)`
+                                        : donorSearchTerm.length >= 2 && !searching
+                                            ? 'No existing donors found - will create new'
+                                            : 'Start typing to search existing donors'}
+                                </p>
                             </div>
-                            <div className="p-6 bg-gray-50 flex justify-end gap-3">
-                                <button
-                                    onClick={() => setShowAddDonationModal(false)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
+                                <select
+                                    value={newDonation.bloodGroup}
+                                    onChange={(e) => setNewDonation({ ...newDonation, bloodGroup: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
                                 >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleAddDonation}
-                                    className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
-                                >
-                                    Register Donor
-                                </button>
+                                    {bloodGroups.map((group) => (
+                                        <option key={group} value={group}>{group}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="relative">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                <input
+                                    type="tel"
+                                    value={newDonation.phone}
+                                    onChange={(e) => setNewDonation({ ...newDonation, phone: e.target.value })}
+                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 outline-none ${phoneExists
+                                        ? 'border-yellow-300 focus:ring-yellow-100 bg-yellow-50'
+                                        : 'border-gray-200 focus:ring-red-100'
+                                        }`}
+                                    placeholder="1234567890"
+                                />
+                                {checkingPhone && (
+                                    <div className="absolute right-3 top-9 text-gray-400">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                    </div>
+                                )}
+                                {phoneExists && (
+                                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-xs text-yellow-800">
+                                                <User size={14} />
+                                                <span>
+                                                    <strong>{phoneExists.Name}</strong> already exists with this phone
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => selectDonor(phoneExists)}
+                                                className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                                            >
+                                                Use Existing
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="relative">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                <input
+                                    type="email"
+                                    value={newDonation.email}
+                                    onChange={(e) => setNewDonation({ ...newDonation, email: e.target.value })}
+                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 outline-none ${emailExists
+                                        ? 'border-yellow-300 focus:ring-yellow-100 bg-yellow-50'
+                                        : 'border-gray-200 focus:ring-red-100'
+                                        }`}
+                                    placeholder="john@example.com"
+                                />
+                                {checkingEmail && (
+                                    <div className="absolute right-3 top-9 text-gray-400">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                    </div>
+                                )}
+                                {emailExists && (
+                                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-xs text-yellow-800">
+                                                <User size={14} />
+                                                <span>
+                                                    <strong>{emailExists.Name}</strong> already exists with this email
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => selectDonor(emailExists)}
+                                                className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                                            >
+                                                Use Existing
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                <textarea
+                                    value={newDonation.notes}
+                                    onChange={(e) => setNewDonation({ ...newDonation, notes: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                                    rows="3"
+                                    placeholder="First time donor, no medical history..."
+                                />
                             </div>
                         </div>
+                        <div className="p-6 bg-gray-50 flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowAddDonationModal(false)}
+                                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAddDonation}
+                                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
+                            >
+                                Register Donor
+                            </button>
+                        </div>
                     </div>
-                )
-            }
+                </div>
+            )}
 
             {/* Screening Form Modal */}
-            {
-                showScreeningModal && selectedDonation && (
-                    <ScreeningFormModal
-                        donation={selectedDonation}
-                        onClose={() => {
-                            setShowScreeningModal(false);
-                            setSelectedDonation(null);
-                        }}
-                        onSuccess={() => {
-                            fetchDonations();
-                            fetchStats();
-                        }}
-                    />
-                )
-            }
+            {showScreeningModal && selectedDonation && (
+                <ScreeningFormModal
+                    donation={selectedDonation}
+                    onClose={() => {
+                        setShowScreeningModal(false);
+                        setSelectedDonation(null);
+                    }}
+                    onSuccess={() => {
+                        fetchDonations();
+                        fetchStats();
+                    }}
+                />
+            )}
 
             {/* Donor Details Modal */}
-            {
-                showDetailsModal && selectedDonation && (
-                    <DonorDetailsModal
-                        donation={selectedDonation}
-                        onClose={() => {
-                            setShowDetailsModal(false);
-                            setSelectedDonation(null);
-                        }}
-                        onNext={async (donation) => {
-                            try {
-                                // Check if this is an appointment (from NEW DONORS)
-                                if (donation.fromAppointment) {
-                                    // Create donation record first
-                                    const donationData = {
-                                        donorName: donation.name,
-                                        bloodGroup: donation.group,
-                                        phone: donation.phone,
-                                        email: donation.email,
-                                        notes: donation.notes,
-                                        appointmentId: donation.appointmentId || donation._id,
-                                        organizationId: user._id
-                                    };
+            {showDetailsModal && selectedDonation && (
+                <DonorDetailsModal
+                    donation={selectedDonation}
+                    onClose={() => {
+                        setShowDetailsModal(false);
+                        setSelectedDonation(null);
+                    }}
+                    onNext={async (donation) => {
+                        try {
+                            console.log('🔵 onNext called with donation:', donation);
+                            console.log('🔵 fromAppointment:', donation.fromAppointment);
+                            console.log('🔵 fromCamp:', donation.fromCamp);
 
-                                    try {
-                                        const newDonation = await adminApi.createDonation(donationData);
-                                        const donationId = newDonation._id || newDonation.donation?._id || newDonation.donation?.id || newDonation.id;
+                            // Check if this is an appointment (from NEW DONORS)
+                            if (donation.fromAppointment) {
+                                console.log('✅ Handling appointment...');
+                                // Create donation record first
+                                const donationData = {
+                                    donorName: donation.name,
+                                    bloodGroup: donation.group,
+                                    phone: donation.phone,
+                                    email: donation.email,
+                                    notes: donation.notes,
+                                    appointmentId: donation.appointmentId || donation._id,
+                                    organizationId: user._id
+                                };
 
-                                        if (donationId) {
-                                            // Move to screening
-                                            await adminApi.updateDonationStage(donationId, 'screening', user._id);
+                                try {
+                                    const newDonation = await adminApi.createDonation(donationData);
+                                    const donationId = newDonation._id || newDonation.donation?._id || newDonation.donation?.id || newDonation.id;
+
+                                    if (donationId) {
+                                        // Move to screening
+                                        await adminApi.updateDonationStage(donationId, 'screening', user._id);
+                                        toast.success('Moved to SCREENING');
+                                    }
+                                } catch (createError) {
+                                    if (createError.response?.status === 400 && createError.response?.data?.message?.includes('already exists')) {
+                                        // If donation already exists, find it and move it
+                                        const existingDonationId = createError.response?.data?.donationId;
+                                        if (existingDonationId) {
+                                            await adminApi.updateDonationStage(existingDonationId, 'screening', user._id);
                                             toast.success('Moved to SCREENING');
                                         }
-                                    } catch (createError) {
-                                        if (createError.response?.status === 400 && createError.response?.data?.message?.includes('already exists')) {
-                                            // If donation already exists, find it and move it
-                                            const existingDonationId = createError.response?.data?.donationId;
-                                            if (existingDonationId) {
-                                                await adminApi.updateDonationStage(existingDonationId, 'screening', user._id);
-                                                toast.success('Moved to SCREENING');
-                                            }
-                                        } else {
-                                            throw createError;
+                                    } else {
+                                        throw createError;
+                                    }
+                                }
+                            } else if (donation.fromCamp) {
+                                console.log('✅ Handling camp participant...');
+                                console.log('Camp data:', {
+                                    campId: donation.campId,
+                                    campParticipantId: donation.campParticipantId,
+                                    donorId: donation.donorId
+                                });
+
+                                // Create donation record for camp participant
+                                const donationData = {
+                                    donorName: donation.name,
+                                    bloodGroup: donation.group,
+                                    phone: donation.phone,
+                                    email: donation.email,
+                                    notes: donation.notes,
+                                    campId: donation.campId,
+                                    campParticipantId: donation.campParticipantId,
+                                    donorId: donation.donorId,
+                                    organizationId: user._id
+                                };
+
+                                console.log('Creating donation with data:', donationData);
+
+                                try {
+                                    const newDonation = await adminApi.createDonation(donationData);
+                                    console.log('Donation created:', newDonation);
+                                    const donationId = newDonation._id || newDonation.donation?._id || newDonation.donation?.id || newDonation.id;
+
+                                    if (donationId) {
+                                        console.log('Moving to screening with ID:', donationId);
+                                        // Move to screening
+                                        await adminApi.updateDonationStage(donationId, 'screening', user._id);
+                                        toast.success('Moved to SCREENING');
+                                    } else {
+                                        console.error('❌ No donation ID returned');
+                                        toast.error('Failed to get donation ID');
+                                    }
+                                } catch (createError) {
+                                    console.error('❌ Error creating/moving camp donation:', createError);
+                                    if (createError.response?.status === 400 && createError.response?.data?.message?.includes('already exists')) {
+                                        // If donation already exists, find it and move it
+                                        const existingDonationId = createError.response?.data?.donationId;
+                                        if (existingDonationId) {
+                                            await adminApi.updateDonationStage(existingDonationId, 'screening', user._id);
+                                            toast.success('Moved to SCREENING');
                                         }
+                                    } else {
+                                        throw createError;
                                     }
-                                } else {
-                                    // Regular donation move
-                                    const donationId = donation.id || donation._id;
-                                    if (!donationId) {
-                                        throw new Error('Donation ID not found');
-                                    }
-                                    await adminApi.updateDonationStage(donationId, 'screening', user._id);
-                                    toast.success('Moved to SCREENING');
+                                }
+                            } else {
+                                console.log('✅ Handling regular donation...');
+                                console.log('Donation object:', donation);
+                                // Regular donation move (for manually added donors)
+                                const donationId = donation.id || donation._id;
+                                console.log('Using donation ID:', donationId);
+
+                                if (!donationId) {
+                                    console.error('❌ No donation ID found in donation object');
+                                    toast.error('Cannot move donation - missing ID');
+                                    return;
                                 }
 
-                                // Close modal and refresh
-                                setShowDetailsModal(false);
-                                setSelectedDonation(null);
-                                await fetchDonations();
-                                fetchStats();
-                            } catch (error) {
-                                console.error('Failed to move to screening:', error);
-                                toast.error('Failed to move to screening');
+                                await adminApi.updateDonationStage(donationId, 'screening', user._id);
+                                toast.success('Moved to SCREENING');
                             }
-                        }}
-                    />
-                )
-            }
+
+                            // Close modal and refresh
+                            setShowDetailsModal(false);
+                            setSelectedDonation(null);
+                            await fetchDonations();
+                            fetchStats();
+                        } catch (error) {
+                            console.error('❌ Failed to move to screening:', error);
+                            toast.error('Failed to move to screening');
+                        }
+                    }}
+                />
+            )}
 
             {/* Blood Collection Modal */}
-            {
-                showCollectionModal && selectedDonation && (
-                    <BloodCollectionModal
-                        donation={selectedDonation}
-                        onClose={() => {
-                            setShowCollectionModal(false);
-                            setSelectedDonation(null);
-                        }}
-                        onSuccess={() => {
-                            fetchDonations();
-                            fetchStats();
-                        }}
-                    />
-                )
-            }
+            {showCollectionModal && selectedDonation && (
+                <BloodCollectionModal
+                    donation={selectedDonation}
+                    onClose={() => {
+                        setShowCollectionModal(false);
+                        setSelectedDonation(null);
+                    }}
+                    onSuccess={() => {
+                        fetchDonations();
+                        fetchStats();
+                    }}
+                />
+            )}
 
             {/* Lab Testing Modal */}
-            {
-                showLabTestModal && selectedDonation && (
-                    <LabTestingModal
-                        donation={selectedDonation}
-                        onClose={() => {
-                            setShowLabTestModal(false);
-                            setSelectedDonation(null);
-                        }}
-                        onSuccess={() => {
-                            fetchDonations();
-                        }}
-                    />
-                )
-            }
-        </div >
+            {showLabTestModal && selectedDonation && (
+                <LabTestingModal
+                    donation={selectedDonation}
+                    onClose={() => {
+                        setShowLabTestModal(false);
+                        setSelectedDonation(null);
+                    }}
+                    onSuccess={() => {
+                        fetchDonations();
+                    }}
+                />
+            )}
+        </div>
     );
 };
 
-export default DonationPipelineTab;
+export default BloodBankDonationPipeline;

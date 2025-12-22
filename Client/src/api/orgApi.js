@@ -126,6 +126,16 @@ export const orgApi = {
     getBloodGroupDistribution: async () => {
         const res = await client.get("/api/org/blood-group-distribution");
         return res.data;
+    },
+
+    // Profile Update Requests
+    submitProfileUpdateRequest: async (data) => {
+        const res = await client.post("/api/org/profile-update-request", data);
+        return res.data;
+    },
+    getPendingProfileUpdateRequest: async () => {
+        const res = await client.get("/api/org/profile-update-request");
+        return res.data;
     }
 };
 

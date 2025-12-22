@@ -8,7 +8,6 @@ import HowItWorksSection from './HowItWorksSection';
 import WhoWeServeSection from './WhoWeServeSection';
 import ComparisonSection from './ComparisonSection';
 import FeaturesSection from './FeaturesSection';
-import ImpactMetrics from './ImpactMetrics';
 import StoriesCarousel from './StoriesCarousel';
 import PremiumFooter from './PremiumFooter';
 import './premium-home.css';
@@ -55,7 +54,7 @@ const NewHome = () => {
     }, []);
 
     return (
-        <div className="bg-white min-h-screen font-['Plus_Jakarta_Sans',sans-serif] overflow-x-hidden">
+        <div className="min-h-screen font-['Plus_Jakarta_Sans',sans-serif] overflow-x-hidden scroll-smooth" style={{ background: 'transparent' }}>
             {/* Scroll Progress Bar */}
             <div className="scroll-progress" style={{ width: `${scrollProgress}%` }}></div>
 
@@ -74,7 +73,6 @@ const NewHome = () => {
                 <WhoWeServeSection />
                 <ComparisonSection />
                 <FeaturesSection />
-                <ImpactMetrics />
                 <StoriesCarousel />
             </main>
 

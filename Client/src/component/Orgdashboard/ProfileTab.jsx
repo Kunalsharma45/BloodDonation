@@ -1,72 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import client from '../../api/client';
+import orgApi from '../../api/orgApi';
 import { toast } from 'sonner';
-import { Building2, Mail, Phone, MapPin, FileText, Shield, Calendar, Edit2, Save, X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
-import { getOrgTypeLabel, getOrgTypeBadgeColor } from './orgUtils';
-
-const InfoRow = ({ icon: Icon, label, value, isEditing, name, onChange, type = "text" }) => (
-    <div className="flex items-start gap-4 py-4 border-b border-gray-100">
-        <div className="p-2 bg-gray-50 rounded-lg">
-            <Icon className="text-gray-600" size={20} />
-        </div>
-        <div className="flex-1">
-            <p className="text-sm text-gray-500 mb-1">{label}</p>
-            {isEditing ? (
-                <input
-                    type={type}
-                    name={name}
-                    value={value || ''}
-                    onChange={onChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-            ) : (
-                <p className="text-gray-800 font-medium">{value || 'Not provided'}</p>
-            )}
-        </div>
-    </div>
-);
-
-const VerificationBadge = ({ status }) => {
-    const config = {
-        APPROVED: {
-            color: 'bg-green-100 text-green-700 border-green-200',
-            icon: CheckCircle,
-            label: 'Verified'
-        },
-        PENDING: {
-            color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-            icon: Clock,
-            label: 'Pending Verification'
-        },
-        REJECTED: {
-            color: 'bg-red-100 text-red-700 border-red-200',
-            icon: AlertCircle,
-            label: 'Verification Rejected'
-        }
-    };
-
-    const { color, icon: Icon, label } = config[status] || config.PENDING;
-
-    return (
-        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${color}`}>
-            <Icon size={18} />
-            <span className="font-medium text-sm">{label}</span>
-        </div>
-    );
-};
+import { AlertCircle } from 'lucide-react';
 
 const ProfileTab = () => {
     const { user, setUser } = useAuth();
-    const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [pendingRequest, setPendingRequest] = useState(null);
     const [formData, setFormData] = useState({
         organizationName: '',
         Name: '',
         Email: '',
         PhoneNumber: '',
         City: '',
-        licenseNo: ''
+        State: '',
+        Country: '',
+        licenseNo: '',
+        DateOfBirth: ''
     });
 
     useEffect(() => {
@@ -77,10 +29,24 @@ const ProfileTab = () => {
                 Email: user.Email || '',
                 PhoneNumber: user.PhoneNumber || '',
                 City: user.City || '',
-                licenseNo: user.licenseNo || ''
+                State: user.State || '',
+                Country: user.Country || '',
+                licenseNo: user.licenseNo || '',
+                DateOfBirth: user.DateOfBirth || ''
             });
+            // Fetch pending profile update request
+            fetchPendingRequest();
         }
     }, [user]);
+
+    const fetchPendingRequest = async () => {
+        try {
+            const request = await orgApi.getPendingProfileUpdateRequest();
+            setPendingRequest(request);
+        } catch (err) {
+            console.error('Failed to fetch pending request:', err);
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -91,232 +57,237 @@ const ProfileTab = () => {
         try {
             setLoading(true);
 
-            // Call backend API to update profile
-            const res = await client.put('/api/profile', formData);
+            // Submit profile update request for admin approval
+            await orgApi.submitProfileUpdateRequest(formData);
 
-            // Update auth context with new user data
-            setUser({ ...user, ...formData });
+            toast.success('Profile update request submitted! Waiting for admin approval.');
 
-            toast.success('Profile updated successfully');
-            setIsEditing(false);
+            // Refresh pending request
+            await fetchPendingRequest();
         } catch (err) {
-            console.error('Failed to update profile:', err);
-            toast.error(err.response?.data?.message || 'Failed to update profile');
+            console.error('Failed to submit profile update request:', err);
+            toast.error(err.response?.data?.message || 'Failed to submit profile update request');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCancel = () => {
-        // Reset form to user data
-        setFormData({
-            organizationName: user.organizationName || '',
-            Name: user.Name || '',
-            Email: user.Email || '',
-            PhoneNumber: user.PhoneNumber || '',
-            City: user.City || '',
-            licenseNo: user.licenseNo || ''
-        });
-        setIsEditing(false);
-    };
-
     return (
-        <div className="space-y-6">
+        <div className="max-w-4xl mx-auto p-6">
             {/* Header */}
-            <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Organization Profile</h1>
-                        <p className="text-gray-500 mt-1">Manage your organization information and settings</p>
-                    </div>
+            <div className="mb-6">
+                <h1 className="text-2xl font-bold text-gray-800">My Profile</h1>
+            </div>
 
-                    {!isEditing ? (
-                        <button
-                            onClick={() => setIsEditing(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                        >
-                            <Edit2 size={18} />
-                            Edit Profile
-                        </button>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleCancel}
-                                disabled={loading}
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-                            >
-                                <X size={18} />
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={loading}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                            >
-                                <Save size={18} />
-                                {loading ? 'Saving...' : 'Save Changes'}
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                {/* Verification Status */}
-                <div className="flex items-center gap-4">
-                    <VerificationBadge status={user?.verificationStatus} />
-                    <div className={`px-4 py-2 rounded-lg text-sm font-medium ${getOrgTypeBadgeColor(user?.organizationType)}`}>
-                        {getOrgTypeLabel(user?.organizationType)}
-                    </div>
+            {/* Tab */}
+            <div className="mb-6">
+                <div className="border-b border-gray-200">
+                    <button className="px-4 py-2 text-red-600 border-b-2 border-red-600 font-medium">
+                        Personal Info
+                    </button>
                 </div>
             </div>
 
-            {/* Profile Information */}
-            <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-800 mb-6">Organization Information</h2>
-
-                <div className="space-y-0">
-                    <InfoRow
-                        icon={Building2}
-                        label="Organization Name"
-                        value={formData.organizationName}
-                        isEditing={isEditing}
-                        name="organizationName"
-                        onChange={handleChange}
-                    />
-
-                    <InfoRow
-                        icon={Building2}
-                        label="Contact Person Name"
-                        value={formData.Name}
-                        isEditing={isEditing}
-                        name="Name"
-                        onChange={handleChange}
-                    />
-
-                    <InfoRow
-                        icon={Mail}
-                        label="Email Address"
-                        value={formData.Email}
-                        isEditing={isEditing}
-                        name="Email"
-                        onChange={handleChange}
-                        type="email"
-                    />
-
-                    <InfoRow
-                        icon={Phone}
-                        label="Phone Number"
-                        value={formData.PhoneNumber}
-                        isEditing={isEditing}
-                        name="PhoneNumber"
-                        onChange={handleChange}
-                        type="tel"
-                    />
-
-                    <InfoRow
-                        icon={MapPin}
-                        label="City"
-                        value={formData.City}
-                        isEditing={isEditing}
-                        name="City"
-                        onChange={handleChange}
-                    />
-
-                    <InfoRow
-                        icon={FileText}
-                        label="License Number"
-                        value={formData.licenseNo}
-                        isEditing={isEditing}
-                        name="licenseNo"
-                        onChange={handleChange}
-                    />
-                </div>
-            </div>
-
-            {/* Account Details (Read-only) */}
-            <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-800 mb-6">Account Details</h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <Shield className="text-gray-600" size={18} />
-                            <p className="text-sm text-gray-500">Account Status</p>
-                        </div>
-                        <p className="text-gray-800 font-medium">{user?.accountStatus || 'ACTIVE'}</p>
-                    </div>
-
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="text-gray-600" size={18} />
-                            <p className="text-sm text-gray-500">Member Since</p>
-                        </div>
-                        <p className="text-gray-800 font-medium">
-                            {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                            }) : 'N/A'}
+            {/* Pending Update Alert */}
+            {pendingRequest && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+                    <AlertCircle className="text-yellow-600 mt-0.5" size={20} />
+                    <div className="flex-1">
+                        <h3 className="font-semibold text-yellow-800 mb-1">Profile Update Pending</h3>
+                        <p className="text-sm text-yellow-700">
+                            Your profile update request is waiting for admin approval. You'll be notified once it's reviewed.
                         </p>
                     </div>
+                </div>
+            )}
 
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <Building2 className="text-gray-600" size={18} />
-                            <p className="text-sm text-gray-500">Organization Type</p>
+            {/* Profile Form */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="grid grid-cols-2 gap-6">
+                    {/* Left Column */}
+                    <div className="space-y-4">
+                        {/* Full Name */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Full Name
+                            </label>
+                            <input
+                                type="text"
+                                name="Name"
+                                value={formData.Name}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
                         </div>
-                        <p className="text-gray-800 font-medium">{getOrgTypeLabel(user?.organizationType)}</p>
-                        <p className="text-xs text-gray-500 mt-1">Contact admin to change organization type</p>
+
+                        {/* Phone Number */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Phone Number
+                            </label>
+                            <input
+                                type="tel"
+                                name="PhoneNumber"
+                                value={formData.PhoneNumber}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        {/* City */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                City
+                            </label>
+                            <input
+                                type="text"
+                                name="City"
+                                value={formData.City}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        {/* Country */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Country
+                            </label>
+                            <input
+                                type="text"
+                                name="Country"
+                                value={formData.Country}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        {/* Date of Birth */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Date of Birth
+                            </label>
+                            <input
+                                type="date"
+                                name="DateOfBirth"
+                                value={formData.DateOfBirth ? formData.DateOfBirth.split('T')[0] : ''}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                        </div>
                     </div>
 
-                    {user?.verifiedAt && (
+                    {/* Right Column */}
+                    <div className="space-y-4">
+                        {/* Email Address */}
                         <div>
-                            <div className="flex items-center gap-2 mb-2">
-                                <CheckCircle className="text-gray-600" size={18} />
-                                <p className="text-sm text-gray-500">Verified On</p>
-                            </div>
-                            <p className="text-gray-800 font-medium">
-                                {new Date(user.verifiedAt).toLocaleDateString('en-US', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                })}
-                            </p>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Email Address <span className="text-gray-400">(Read-only)</span>
+                            </label>
+                            <input
+                                type="email"
+                                name="Email"
+                                value={formData.Email}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
                         </div>
-                    )}
+
+                        {/* Blood Group */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Blood Group
+                            </label>
+                            <select
+                                name="bloodGroup"
+                                value={user?.bloodGroup || 'B+'}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
+                            >
+                                <option>B+</option>
+                            </select>
+                        </div>
+
+                        {/* State */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                State
+                            </label>
+                            <input
+                                type="text"
+                                name="State"
+                                value={formData.State}
+                                onChange={handleChange}
+                                placeholder="Enter your state"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        {/* Gender */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Gender
+                            </label>
+                            <select
+                                name="Gender"
+                                value={user?.Gender || ''}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
+                            >
+                                <option>Select Gender</option>
+                            </select>
+                        </div>
+
+                        {/* Role */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Role <span className="text-gray-400">(Read-only)</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={user?.Role === 'organization' ? 'DONOR' : user?.Role?.toUpperCase() || 'DONOR'}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Status Badges */}
+                <div className="grid grid-cols-2 gap-6 mt-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Verification Status <span className="text-gray-400">(Read-only)</span>
+                        </label>
+                        <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-md text-center">
+                            <span className="text-green-700 font-medium">APPROVED</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Account Status <span className="text-gray-400">(Read-only)</span>
+                        </label>
+                        <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-md text-center">
+                            <span className="text-green-700 font-medium">ACTIVE</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+                    <p className="text-sm text-gray-500">No changes to save</p>
+                    <button
+                        onClick={handleSave}
+                        disabled={loading}
+                        className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        {loading ? 'Saving...' : 'Save Changes'}
+                    </button>
                 </div>
             </div>
-
-            {/* Help Text */}
-            {user?.verificationStatus === 'PENDING' && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                        <Clock className="text-yellow-600 mt-0.5" size={20} />
-                        <div>
-                            <h3 className="font-semibold text-yellow-800 mb-1">Verification Pending</h3>
-                            <p className="text-sm text-yellow-700">
-                                Your organization is currently under verification. You can still use the platform, but some features may be restricted until verification is complete.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {user?.verificationStatus === 'REJECTED' && user?.rejectionReason && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                        <AlertCircle className="text-red-600 mt-0.5" size={20} />
-                        <div>
-                            <h3 className="font-semibold text-red-800 mb-1">Verification Rejected</h3>
-                            <p className="text-sm text-red-700 mb-2">
-                                Your organization verification was rejected. Please contact support for assistance.
-                            </p>
-                            <p className="text-sm text-red-600 bg-red-100 px-3 py-2 rounded">
-                                <strong>Reason:</strong> {user.rejectionReason}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
