@@ -4,6 +4,7 @@ import Login from '../Loginsignup/Login'
 import Signup from '../Loginsignup/Signup'
 import ForgotPassword from '../Loginsignup/ForgotPassword'
 import NewHome from "../Homepage/NewHome"
+import LearnMore from '../Homepage/LearnMore'
 import Donor from "../DonorDashboard/Donor"
 import ProtectedRoute from './ProtectedRoute'
 import OrgDashboard from '../Orgdashboard/Org' // Importing the new Org Layout as OrgDashboard
@@ -15,6 +16,7 @@ const AppRoutes = () => {
       <Routes>
         {/* public */}
         <Route path='/' element={<NewHome />} />
+        <Route path='/about' element={<LearnMore />} />
         <Route path='/login' element={<Login />} />
         <Route path='/signup' element={<Signup />} />
         <Route path='/forgot-password' element={<ForgotPassword />} />

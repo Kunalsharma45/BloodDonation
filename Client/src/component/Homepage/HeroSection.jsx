@@ -46,7 +46,7 @@ const HeroSection = () => {
                             Register Now
                         </button>
                         <button
-                            onClick={() => navigate('/login')}
+                            onClick={() => navigate('/about')}
                             className="glass px-10 py-5 rounded-[2rem] font-black uppercase tracking-tighter text-lg text-slate-700 active:scale-95 duration-200"
                         >
                             Learn More

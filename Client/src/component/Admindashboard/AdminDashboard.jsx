@@ -41,6 +41,7 @@ import AlertsView from "./AlertsView";
 import AdminSidebar from "./AdminSidebar";
 import PendingQueue from "./PendingQueue";
 import UsersTable from "./UsersTable";
+import Footer from "../Footer";
 
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
@@ -236,6 +237,31 @@ const AdminDashboard = () => {
     urgency: "All",
   });
 
+  // State for summary boxes
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [alerts, setAlerts] = useState({ unfulfilled: [], expiringUnits: [] });
+
+  // Fetch recent activity and alerts
+  useEffect(() => {
+    const fetchSummaryData = async () => {
+      try {
+        // Fetch audit logs for recent activity
+        const logsRes = await client.get("/api/admin/logs?limit=5");
+        setRecentActivity(logsRes.data?.items || []);
+
+        // Fetch alerts
+        const alertsRes = await client.get("/api/admin/alerts");
+        setAlerts(alertsRes.data || { unfulfilled: [], expiringUnits: [] });
+      } catch (err) {
+        console.error("Failed to fetch summary data:", err);
+      }
+    };
+
+    if (!dataLoading) {
+      fetchSummaryData();
+    }
+  }, [dataLoading]);
+
   // Derived
   const lowStockTypes = useMemo(
     () =>
@@ -244,11 +270,18 @@ const AdminDashboard = () => {
         .map(([k]) => k),
     [stock, settings.threshold]
   );
+
+  // Get top donors from users (donors with most donations)
   const topDonors = useMemo(
-    () =>
-      users
-        .slice(0, 3)
-        .map((u, i) => ({ name: u.name, donations: 5 + (3 - i) })),
+    () => {
+      // Filter only donors and sort by donation count if available
+      const donors = users.filter(u => u.Role === 'donor' || u.Role === 'DONOR');
+      // For now, just show first 3 donors - in future, add donation count to user model
+      return donors.slice(0, 3).map((u, i) => ({
+        name: u.Name || u.name,
+        donations: 5 - i // Placeholder - should come from backend
+      }));
+    },
     [users]
   );
 
@@ -666,1465 +699,1392 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-800 font-sans">
-      {/* Sidebar - Using AdminSidebar component */}
       <AdminSidebar />
-
-      {/* Main content */}
-      <main className="flex-1 ml-0 md:ml-20 lg:ml-64 p-6 md:p-8 overflow-y-auto h-screen transition-all duration-300">
-        {/* Header */}
-        <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">{activePage}</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Welcome back — manage donors, stock, requests and settings from
-              here.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <div className="hidden md:flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2.5 gap-2 flex-1 shadow-sm focus-within:ring-2 ring-red-100 transition-all">
-              <Search className="w-4 h-4 text-gray-400" />
-              <input
-                className="bg-transparent outline-none text-sm w-64"
-                placeholder="Search donors, requests, appointments..."
-              />
+      <div className="flex-1 flex flex-col min-h-screen ml-0 md:ml-20 lg:ml-64 transition-all duration-300">
+        <main className="p-6 md:p-8 flex-1">
+          {/* Header */}
+          <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">{activePage}</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Welcome back — manage donors, stock, requests and settings from
+                here.
+              </p>
             </div>
-            <button className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 relative shadow-sm">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
-            <button className="md:hidden p-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-sm">
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
 
-        <div className="animate-fade-in">
-          {/* Dashboard */}
-          {activePage === "Dashboard" && (
-            <>
-              {/* Stats */}
-              <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                <div className="rounded-2xl p-6 shadow-sm bg-white border border-gray-100">
-                  <p className="text-sm font-medium text-gray-600 mb-1">
-                    Total Units
-                  </p>
-                  <div className="flex items-baseline gap-3">
-                    <h3 className="text-3xl font-bold text-gray-900">
-                      {totalUnits}
-                    </h3>
-                    <span className="text-xs font-semibold text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md">
-                      {Object.keys(stock || {}).length} groups
-                    </span>
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="hidden md:flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2.5 gap-2 flex-1 shadow-sm focus-within:ring-2 ring-red-100 transition-all">
+                <Search className="w-4 h-4 text-gray-400" />
+                <input
+                  className="bg-transparent outline-none text-sm w-64"
+                  placeholder="Search donors, requests, appointments..."
+                />
+              </div>
+              <button className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 relative shadow-sm">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+              </button>
+              <button className="md:hidden p-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-sm">
+                <Menu className="w-5 h-5" />
+              </button>
+            </div>
+          </header>
+
+          <div className="animate-fade-in">
+            {/* Dashboard */}
+            {activePage === "Dashboard" && (
+              <>
+                {/* Stats */}
+                <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                  <div className="rounded-2xl p-6 shadow-sm bg-white border border-gray-100">
+                    <p className="text-sm font-medium text-gray-600 mb-1">
+                      Total Units
+                    </p>
+                    <div className="flex items-baseline gap-3">
+                      <h3 className="text-3xl font-bold text-gray-900">
+                        {totalUnits}
+                      </h3>
+                      <span className="text-xs font-semibold text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md">
+                        {Object.keys(stock || {}).length} groups
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Today: {monthlyDonations[new Date().getMonth()] || 0}{" "}
+                      donations
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Today: {monthlyDonations[new Date().getMonth()] || 0}{" "}
-                    donations
-                  </p>
-                </div>
 
-                <div className="rounded-2xl p-6 shadow-sm bg-white border border-gray-100">
-                  <p className="text-sm font-medium text-gray-600 mb-1">
-                    Active Requests
-                  </p>
-                  <h3 className="text-3xl font-bold text-gray-900">
-                    {(requests || []).filter(
-                      (r) =>
-                        r.status === "Pending" ||
-                        r.status === "Verified" ||
-                        r.status === "Approved"
-                    ).length > 0
-                      ? (requests || []).filter(
+                  <div className="rounded-2xl p-6 shadow-sm bg-white border border-gray-100">
+                    <p className="text-sm font-medium text-gray-600 mb-1">
+                      Active Requests
+                    </p>
+                    <h3 className="text-3xl font-bold text-gray-900">
+                      {(requests || []).filter(
                         (r) =>
                           r.status === "Pending" ||
                           r.status === "Verified" ||
                           r.status === "Approved"
-                      ).length
-                      : "—"}
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Urgent:{" "}
-                    {(requests || []).filter(
-                      (r) => r.urgency === "Critical" || r.urgency === "High"
-                    ).length > 0
-                      ? (requests || []).filter(
-                        (r) =>
-                          r.urgency === "Critical" || r.urgency === "High"
-                      ).length
-                      : "—"}
-                  </p>
-                </div>
+                      ).length > 0
+                        ? (requests || []).filter(
+                          (r) =>
+                            r.status === "Pending" ||
+                            r.status === "Verified" ||
+                            r.status === "Approved"
+                        ).length
+                        : "—"}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Urgent:{" "}
+                      {(requests || []).filter(
+                        (r) => r.urgency === "Critical" || r.urgency === "High"
+                      ).length > 0
+                        ? (requests || []).filter(
+                          (r) =>
+                            r.urgency === "Critical" || r.urgency === "High"
+                        ).length
+                        : "—"}
+                    </p>
+                  </div>
 
-                <div className="rounded-2xl p-6 shadow-sm bg-white border border-gray-100">
-                  <p className="text-sm font-medium text-gray-600 mb-1">
-                    Appointments Today
-                  </p>
-                  <h3 className="text-3xl font-bold text-gray-900">
-                    {(appointments || []).filter(
-                      (a) =>
-                        a.date === format(new Date(), "yyyy-MM-dd") &&
-                        a.status === "Scheduled"
-                    ).length > 0
-                      ? (appointments || []).filter(
+                  <div className="rounded-2xl p-6 shadow-sm bg-white border border-gray-100">
+                    <p className="text-sm font-medium text-gray-600 mb-1">
+                      Appointments Today
+                    </p>
+                    <h3 className="text-3xl font-bold text-gray-900">
+                      {(appointments || []).filter(
                         (a) =>
                           a.date === format(new Date(), "yyyy-MM-dd") &&
                           a.status === "Scheduled"
-                      ).length
-                      : "—"}
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Scheduled this month:{" "}
-                    {(appointments || []).length > 0
-                      ? (appointments || []).length
-                      : "—"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl p-6 shadow-sm bg-white border border-gray-100">
-                  <p className="text-sm font-medium text-gray-600 mb-1">
-                    Low Stock Alerts
-                  </p>
-                  <h3 className="text-3xl font-bold text-gray-900">
-                    {lowStockTypes.length > 0 ? lowStockTypes.length : "—"}
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Threshold: {settings.threshold} units
-                  </p>
-                </div>
-              </section>
-
-              {/* Charts */}
-              <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 col-span-2 h-80">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-gray-800">
-                      Monthly Donations
+                      ).length > 0
+                        ? (appointments || []).filter(
+                          (a) =>
+                            a.date === format(new Date(), "yyyy-MM-dd") &&
+                            a.status === "Scheduled"
+                        ).length
+                        : "—"}
                     </h3>
-                    <div className="text-xs text-gray-500">Trend per month</div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Scheduled this month:{" "}
+                      {(appointments || []).length > 0
+                        ? (appointments || []).length
+                        : "—"}
+                    </p>
                   </div>
-                  <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={areaChartData}>
-                        <defs>
-                          <linearGradient id="colorDonations" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                        <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#fff',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="donations"
-                          stroke="#ef4444"
-                          strokeWidth={2}
-                          fillOpacity={1}
-                          fill="url(#colorDonations)"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
 
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-80">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-gray-800">
-                      Blood Type Availability
+                  <div className="rounded-2xl p-6 shadow-sm bg-white border border-gray-100">
+                    <p className="text-sm font-medium text-gray-600 mb-1">
+                      Low Stock Alerts
+                    </p>
+                    <h3 className="text-3xl font-bold text-gray-900">
+                      {lowStockTypes.length > 0 ? lowStockTypes.length : "—"}
                     </h3>
-                    <div className="text-xs text-gray-500">Units by group</div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Threshold: {settings.threshold} units
+                    </p>
                   </div>
-                  <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieChartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {pieChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#fff',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                          }}
-                        />
-                        <Legend
-                          verticalAlign="middle"
-                          align="right"
-                          layout="vertical"
-                          iconType="circle"
-                          wrapperStyle={{ fontSize: '12px' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="mt-3 text-xs text-gray-500">
-                    <strong>Low stock:</strong>{" "}
-                    {lowStockTypes.length ? lowStockTypes.join(", ") : "—"}
-                  </div>
-                </div>
-              </section>
+                </section>
 
-              {/* Donation Kanban */}
-              <section className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-xl">Donation Pipeline</h3>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setShowAddDonationModal(true)}
-                      className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" /> New Donation
-                    </button>
+                {/* Charts */}
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 col-span-2 h-80">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-bold text-gray-800">
+                        Monthly Donations
+                      </h3>
+                      <div className="text-xs text-gray-500">Trend per month</div>
+                    </div>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={areaChartData}>
+                          <defs>
+                            <linearGradient id="colorDonations" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                          <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#fff',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                            }}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="donations"
+                            stroke="#ef4444"
+                            strokeWidth={2}
+                            fillOpacity={1}
+                            fill="url(#colorDonations)"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-                  <DragDropContext onDragEnd={onDragEndDonation}>
-                    {Object.values(donationColumns).map((col) => (
-                      <Droppable key={col.id} droppableId={col.id}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className={`flex flex-col rounded-2xl p-2 min-h-[180px] border ${snapshot.isDraggingOver
-                              ? "border-blue-200"
-                              : "border-gray-100"
-                              } bg-gradient-to-br ${col.color}`}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-80">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-bold text-gray-800">
+                        Blood Type Availability
+                      </h3>
+                      <div className="text-xs text-gray-500">Units by group</div>
+                    </div>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
                           >
-                            <div className="flex items-center justify-between p-3">
-                              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                {col.title}
-                              </h4>
-                              <span className="text-xs font-bold text-gray-500 bg-white border border-gray-200 px-2 py-0.5 rounded-md shadow-sm">
-                                {col.items.length}
-                              </span>
-                            </div>
-                            <div className="flex-1 space-y-3 p-1">
-                              {col.items.map((it, idx) => (
-                                <Draggable
-                                  key={it.id}
-                                  draggableId={it.id}
-                                  index={idx}
-                                >
-                                  {(pr) => (
-                                    <div
-                                      ref={pr.innerRef}
-                                      {...pr.draggableProps}
-                                      {...pr.dragHandleProps}
-                                      className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer group"
-                                    >
-                                      <div className="flex items-start gap-3">
-                                        <div
-                                          style={{
-                                            background: `linear-gradient(135deg, #ef4444 0%, #dc2626 100%)`,
-                                          }}
-                                          className="w-10 h-10 rounded-full text-white flex items-center justify-center font-bold text-sm shadow-sm"
-                                        >
-                                          {it.name
-                                            .split(" ")
-                                            .map((n) => n[0])
-                                            .slice(0, 2)
-                                            .join("")}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center justify-between mb-1">
-                                            <p className="font-bold text-sm text-gray-800 truncate">
-                                              {it.name}
-                                            </p>
-                                            <span className="text-[10px] font-mono text-gray-400">
-                                              #{it.id}
-                                            </span>
-                                          </div>
-                                          <p className="text-xs text-gray-500 mb-3">
-                                            Group:{" "}
-                                            <span className="font-semibold text-gray-700">
-                                              {it.group}
-                                            </span>
-                                          </p>
-                                          <div className="flex items-center justify-between">
-                                            <div className="text-[10px] font-bold px-2 py-1 rounded-md bg-gray-50 text-gray-600 border border-gray-100">
-                                              {format(
-                                                new Date(it.date),
-                                                "dd MMM"
-                                              )}
-                                            </div>
-                                            <button className="text-xs text-green-600 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity font-bold bg-green-50 px-2 py-1 rounded-md">
-                                              <CheckCircle className="w-3 h-3" />{" "}
-                                              Action
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </Draggable>
-                              ))}
-                              {provided.placeholder}
-                            </div>
+                            {pieChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#fff',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="middle"
+                            align="right"
+                            layout="vertical"
+                            iconType="circle"
+                            wrapperStyle={{ fontSize: '12px' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-3 text-xs text-gray-500">
+                      <strong>Low stock:</strong>{" "}
+                      {lowStockTypes.length ? lowStockTypes.join(", ") : "—"}
+                    </div>
+                  </div>
+                </section>
+
+                {/* Summary */}
+                <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-gray-400" /> Recent
+                      Activity
+                    </h4>
+                    <ul className="space-y-3 text-sm text-gray-600">
+                      {recentActivity.length > 0 ? (
+                        recentActivity.map((activity, index) => (
+                          <li key={activity._id || index} className="flex justify-between">
+                            <span className="truncate">{activity.action?.replace(/_/g, ' ') || 'Activity'}</span>
+                            <span className="text-xs text-gray-400">
+                              {activity.createdAt ? new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                            </span>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-400 italic">No recent activity</li>
+                      )}
+                    </ul>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
+                      <Heart className="w-4 h-4 text-gray-400" /> Top Donors
+                    </h4>
+                    <ol className="space-y-3">
+                      {topDonors.map((d, index) => (
+                        <li
+                          key={`donor-${index}`}
+                          className="flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="font-medium">{d.name}</p>
+                            <p className="text-xs text-gray-400">
+                              Donations: {d.donations}
+                            </p>
                           </div>
-                        )}
-                      </Droppable>
-                    ))}
-                  </DragDropContext>
-                </div>
-              </section>
+                          <div className="text-sm font-bold text-gray-800">
+                            {d.donations}
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
 
-              {/* Summary */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-gray-400" /> Recent
-                    Activity
-                  </h4>
-                  <ul className="space-y-3 text-sm text-gray-600">
-                    <li className="flex justify-between">
-                      <span>New donor registered</span>
-                      <span className="text-xs text-gray-400">2h ago</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>Donation completed</span>
-                      <span className="text-xs text-gray-400">4h ago</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>Low stock alert (O-)</span>
-                      <span className="text-xs text-gray-400">1d ago</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-gray-400" /> Top Donors
-                  </h4>
-                  <ol className="space-y-3">
-                    {topDonors.map((d, index) => (
-                      <li
-                        key={`donor-${index}`}
-                        className="flex items-center justify-between"
-                      >
-                        <div>
-                          <p className="font-medium">{d.name}</p>
-                          <p className="text-xs text-gray-400">
-                            Donations: {d.donations}
-                          </p>
-                        </div>
-                        <div className="text-sm font-bold text-gray-800">
-                          {d.donations}
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-gray-400" /> Alerts
-                  </h4>
-                  <div className="space-y-3">
-                    {lowStockTypes.length > 0 ? (
-                      lowStockTypes.map((t) => (
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-gray-400" /> Alerts
+                    </h4>
+                    <div className="space-y-3">
+                      {/* Low Stock Alerts */}
+                      {lowStockTypes.length > 0 && lowStockTypes.map((t) => (
                         <div
-                          key={t}
+                          key={`low-${t}`}
                           className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-100"
                         >
                           <div>
-                            <p className="font-medium">{t} low</p>
+                            <p className="font-medium text-sm">{t} low stock</p>
                             <p className="text-xs text-gray-500">
-                              Consider urgent restock
+                              Urgent restock needed
                             </p>
                           </div>
                           <div className="text-sm font-bold text-red-700">
-                            {stock[t].units} U
+                            {stock[t]?.units || 0} U
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-gray-500">No low stock alerts</div>
-                    )}
-                  </div>
-                </div>
-              </section>
-            </>
-          )}
-
-          {/* Users page - DISABLED: Using UsersTable component instead */}
-          {false && activePage === "Users" && (
-            <>
-              <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-800">
-                      User Management
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Manage donors, volunteers and admins.
-                    </p>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="relative">
-                      <input
-                        value={userSearch}
-                        onChange={(e) => {
-                          setUserSearch(e.target.value);
-                          setUserPage(1);
-                        }}
-                        placeholder="Search users..."
-                        className="px-4 py-2 border rounded-lg outline-none text-sm w-64"
-                      />
-                      <Search className="w-4 h-4 text-gray-400 absolute right-3 top-2.5" />
-                    </div>
-                    <button
-                      onClick={() => setShowAddUserModal(true)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
-                    >
-                      <Plus className="w-4 h-4" /> Add User
-                    </button>
-                  </div>
-                </div>
-              </section>
-
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50/50">
-                      <tr>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                          User Profile
-                        </th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                          Role
-                        </th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                          Last Active
-                        </th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {visibleUsers.map((user) => (
-                        <tr
-                          key={user.id}
-                          className="hover:bg-gray-50/80 transition-colors group"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold ring-2 ring-white shadow-sm">
-                                {user.avatar}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-sm text-gray-900">
-                                  {user.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {user.email}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            <div className="flex items-center gap-1.5">
-                              {user.role === "Admin" ? (
-                                <Settings className="w-3.5 h-3.5 text-indigo-500" />
-                              ) : (
-                                <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                              )}
-                              {user.role}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-2.5 py-1 rounded-full text-xs font-medium border ${user.status === "Active"
-                                ? "bg-green-100 text-green-700"
-                                : user.status === "Offline"
-                                  ? "bg-gray-100 text-gray-600"
-                                  : "bg-orange-100 text-orange-600"
-                                } bg-opacity-50 border-opacity-20`}
-                            >
-                              {user.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500 font-mono text-xs">
-                            {user.lastActive}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                              <Settings className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
 
-                <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-gray-50/30">
-                  <span className="text-sm text-gray-500">
-                    Showing{" "}
-                    <span className="font-bold text-gray-900">
-                      {(userPage - 1) * usersPerPage + 1}
-                    </span>{" "}
-                    -{" "}
-                    <span className="font-bold text-gray-900">
-                      {Math.min(userPage * usersPerPage, filteredUsers.length)}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-bold text-gray-900">
-                      {filteredUsers.length}
-                    </span>{" "}
-                    users
-                  </span>
+                      {/* Expiring Units */}
+                      {alerts.expiringUnits?.length > 0 && alerts.expiringUnits.slice(0, 2).map((unit, idx) => (
+                        <div
+                          key={`expiring-${idx}`}
+                          className="flex items-center justify-between p-3 rounded-lg bg-orange-50 border border-orange-100"
+                        >
+                          <div>
+                            <p className="font-medium text-sm">Blood expiring soon</p>
+                            <p className="text-xs text-gray-500">
+                              {unit.bloodGroup} - {new Date(unit.expiryDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
 
-                  <div className="flex gap-2">
-                    <button
-                      disabled={userPage === 1}
-                      onClick={() => setUserPage((p) => Math.max(1, p - 1))}
-                      className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-lg bg-white text-gray-600 disabled:opacity-50"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      disabled={userPage === totalUserPages}
-                      onClick={() =>
-                        setUserPage((p) => Math.min(totalUserPages, p + 1))
-                      }
-                      className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-lg bg-white text-gray-600 disabled:opacity-50"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+                      {/* Unfulfilled Requests */}
+                      {alerts.unfulfilled?.length > 0 && alerts.unfulfilled.slice(0, 2).map((req, idx) => (
+                        <div
+                          key={`unfulfilled-${idx}`}
+                          className="flex items-center justify-between p-3 rounded-lg bg-yellow-50 border border-yellow-100"
+                        >
+                          <div>
+                            <p className="font-medium text-sm">Pending request</p>
+                            <p className="text-xs text-gray-500">
+                              {req.bloodGroup} - {req.units} units needed
+                            </p>
+                          </div>
+                        </div>
+                      ))}
 
-          {/* Appointments */}
-          {activePage === "Appointments" && (
-            <>
-              <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">
-                    Appointment Scheduling
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Manage donor appointments and time slots.
-                  </p>
-                </div>
-                <div className="flex gap-3 items-center">
-                  <button
-                    onClick={() => setShowAddAppointmentModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg"
-                  >
-                    <Plus className="w-4 h-4" /> Add Appointment
-                  </button>
-                </div>
-              </section>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-bold">Appointments</h4>
-                    <div className="text-xs text-gray-500">
-                      Total: {appointments.length}
+                      {/* No Alerts */}
+                      {lowStockTypes.length === 0 && (!alerts.expiringUnits || alerts.expiringUnits.length === 0) && (!alerts.unfulfilled || alerts.unfulfilled.length === 0) && (
+                        <div className="text-gray-400 italic text-sm">No alerts at this time</div>
+                      )}
                     </div>
                   </div>
+                </section>
+              </>
+            )}
+
+            {/* Users page - DISABLED: Using UsersTable component instead */}
+            {false && activePage === "Users" && (
+              <>
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-800">
+                        User Management
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Manage donors, volunteers and admins.
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="relative">
+                        <input
+                          value={userSearch}
+                          onChange={(e) => {
+                            setUserSearch(e.target.value);
+                            setUserPage(1);
+                          }}
+                          placeholder="Search users..."
+                          className="px-4 py-2 border rounded-lg outline-none text-sm w-64"
+                        />
+                        <Search className="w-4 h-4 text-gray-400 absolute right-3 top-2.5" />
+                      </div>
+                      <button
+                        onClick={() => setShowAddUserModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                      >
+                        <Plus className="w-4 h-4" /> Add User
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table className="w-full text-left border-collapse">
                       <thead className="bg-gray-50/50">
                         <tr>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                            Donor
+                          <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            User Profile
                           </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                            Group
+                          <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            Role
                           </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                            Date
-                          </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                            Time
-                          </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                          <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
                             Status
                           </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">
+                          <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            Last Active
+                          </th>
+                          <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
                             Actions
                           </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {(appointments || []).map((a) => (
+                        {visibleUsers.map((user) => (
                           <tr
-                            key={a.id}
-                            className="hover:bg-gray-50 transition-colors"
+                            key={user.id}
+                            className="hover:bg-gray-50/80 transition-colors group"
                           >
-                            <td className="px-4 py-3">
+                            <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">
-                                  {a.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .slice(0, 2)
-                                    .join("")}
+                                <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold ring-2 ring-white shadow-sm">
+                                  {user.avatar}
                                 </div>
                                 <div>
-                                  <p className="font-medium text-sm">
-                                    {a.name}
+                                  <p className="font-semibold text-sm text-gray-900">
+                                    {user.name}
                                   </p>
-                                  <p className="text-xs text-gray-400">
-                                    {a.email}
+                                  <p className="text-xs text-gray-500">
+                                    {user.email}
                                   </p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-sm">{a.group}</td>
-                            <td className="px-4 py-3 text-sm">{a.date}</td>
-                            <td className="px-4 py-3 text-sm">{a.time}</td>
-                            <td className="px-4 py-3 text-sm">
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              <div className="flex items-center gap-1.5">
+                                {user.role === "Admin" ? (
+                                  <Settings className="w-3.5 h-3.5 text-indigo-500" />
+                                ) : (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                )}
+                                {user.role}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
                               <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${a.status === "Scheduled"
-                                  ? "bg-blue-50 text-blue-700"
-                                  : a.status === "Completed"
-                                    ? "bg-green-50 text-green-700"
-                                    : "bg-red-50 text-red-700"
-                                  }`}
+                                className={`px-2.5 py-1 rounded-full text-xs font-medium border ${user.status === "Active"
+                                  ? "bg-green-100 text-green-700"
+                                  : user.status === "Offline"
+                                    ? "bg-gray-100 text-gray-600"
+                                    : "bg-orange-100 text-orange-600"
+                                  } bg-opacity-50 border-opacity-20`}
                               >
-                                {a.status}
+                                {user.status}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex justify-end gap-2">
-                                <button
-                                  onClick={() => {
-                                    /* edit stub */
-                                  }}
-                                  className="p-2 rounded-lg hover:bg-gray-50 text-gray-500"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => cancelAppointment(a.id)}
-                                  className="p-2 rounded-lg hover:bg-gray-50 text-red-500"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
+                            <td className="px-6 py-4 text-sm text-gray-500 font-mono text-xs">
+                              {user.lastActive}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                <Settings className="w-4 h-4" />
+                              </button>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                </div>
 
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h4 className="font-bold mb-3">Calendar</h4>
-                  <div className="grid grid-cols-7 gap-1 text-xs text-center">
-                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                      (d) => (
-                        <div key={d} className="py-1 text-gray-500">
-                          {d}
-                        </div>
-                      )
-                    )}
-                    {calendar.map((day) => {
-                      const key = format(day, "yyyy-MM-dd");
-                      const count = appointmentCountsByDay[key] || 0;
-                      const inMonth = isSameMonth(day, today);
-                      return (
-                        <div
-                          key={key}
-                          className={`p-2 rounded ${isSameDay(day, new Date()) ? "bg-red-50" : ""
-                            }`}
-                        >
-                          <div
-                            className={`${inMonth ? "text-gray-700" : "text-gray-300"
-                              } text-xs`}
-                          >
-                            {format(day, "d")}
-                          </div>
-                          {count > 0 && (
-                            <div className="mt-1 text-[10px] font-semibold text-white bg-red-600 rounded-full w-6 h-6 mx-auto flex items-center justify-center">
-                              {count}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-gray-50/30">
+                    <span className="text-sm text-gray-500">
+                      Showing{" "}
+                      <span className="font-bold text-gray-900">
+                        {(userPage - 1) * usersPerPage + 1}
+                      </span>{" "}
+                      -{" "}
+                      <span className="font-bold text-gray-900">
+                        {Math.min(userPage * usersPerPage, filteredUsers.length)}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-bold text-gray-900">
+                        {filteredUsers.length}
+                      </span>{" "}
+                      users
+                    </span>
+
+                    <div className="flex gap-2">
+                      <button
+                        disabled={userPage === 1}
+                        onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-lg bg-white text-gray-600 disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        disabled={userPage === totalUserPages}
+                        onClick={() =>
+                          setUserPage((p) => Math.min(totalUserPages, p + 1))
+                        }
+                        className="px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-lg bg-white text-gray-600 disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
 
-          {/* Requests */}
-          {activePage === "Requests" && (
-            <>
-              <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">
-                    Blood Requests
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Manage hospital and external requests.
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <select
-                    value={requestFilter.group}
-                    onChange={(e) =>
-                      setRequestFilter((s) => ({ ...s, group: e.target.value }))
-                    }
-                    className="px-3 py-2 border rounded-lg"
-                  >
-                    <option>All</option>
-                    {Object.keys(stock).map((g) => (
-                      <option key={g}>{g}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={requestFilter.status}
-                    onChange={(e) =>
-                      setRequestFilter((s) => ({
-                        ...s,
-                        status: e.target.value,
-                      }))
-                    }
-                    className="px-3 py-2 border rounded-lg"
-                  >
-                    <option>All</option>
-                    <option>Pending</option>
-                    <option>Approved</option>
-                    <option>Rejected</option>
-                    <option>Fulfilled</option>
-                  </select>
-                  <button
-                    onClick={() => setShowAddRequestModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg"
-                  >
-                    <Plus className="w-4 h-4" /> New Request
-                  </button>
-                </div>
-              </section>
+            {/* Appointments */}
+            {activePage === "Appointments" && (
+              <>
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-800">
+                      Appointment Scheduling
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Manage donor appointments and time slots.
+                    </p>
+                  </div>
+                  <div className="flex gap-3 items-center">
+                    <button
+                      onClick={() => setShowAddAppointmentModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg"
+                    >
+                      <Plus className="w-4 h-4" /> Add Appointment
+                    </button>
+                  </div>
+                </section>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead className="bg-gray-50/50">
-                        <tr>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                            Request
-                          </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                            Group
-                          </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                            Units
-                          </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                            Urgency
-                          </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                            Status
-                          </th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {requests
-                          .filter(
-                            (r) =>
-                              (requestFilter.group === "All"
-                                ? true
-                                : r.group === requestFilter.group) &&
-                              (requestFilter.status === "All"
-                                ? true
-                                : r.status === requestFilter.status)
-                          )
-                          .map((r) => (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                  <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-bold">Appointments</h4>
+                      <div className="text-xs text-gray-500">
+                        Total: {appointments.length}
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead className="bg-gray-50/50">
+                          <tr>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Donor
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Group
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Date
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Time
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Status
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {(appointments || []).map((a) => (
                             <tr
-                              key={r.id}
+                              key={a.id}
                               className="hover:bg-gray-50 transition-colors"
                             >
                               <td className="px-4 py-3">
-                                <div>
-                                  <p className="font-medium">{r.hospital}</p>
-                                  <p className="text-xs text-gray-400">
-                                    {r.contact}
-                                  </p>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                                    {a.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .slice(0, 2)
+                                      .join("")}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm">
+                                      {a.name}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                      {a.email}
+                                    </p>
+                                  </div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-sm">{r.group}</td>
-                              <td className="px-4 py-3 text-sm">{r.units}</td>
-                              <td className="px-4 py-3 text-sm">{r.urgency}</td>
-                              <td className="px-4 py-3">
+                              <td className="px-4 py-3 text-sm">{a.group}</td>
+                              <td className="px-4 py-3 text-sm">{a.date}</td>
+                              <td className="px-4 py-3 text-sm">{a.time}</td>
+                              <td className="px-4 py-3 text-sm">
                                 <span
-                                  className={`px-2 py-1 rounded-full text-xs ${r.status === "Pending"
-                                    ? "bg-yellow-50 text-yellow-700"
-                                    : r.status === "Approved"
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${a.status === "Scheduled"
+                                    ? "bg-blue-50 text-blue-700"
+                                    : a.status === "Completed"
                                       ? "bg-green-50 text-green-700"
                                       : "bg-red-50 text-red-700"
                                     }`}
                                 >
-                                  {r.status}
+                                  {a.status}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <div className="flex justify-end gap-2">
                                   <button
-                                    onClick={() => approveRequest(r.id)}
-                                    className="px-3 py-1 rounded-lg bg-green-600 text-white text-sm"
+                                    onClick={() => {
+                                      /* edit stub */
+                                    }}
+                                    className="p-2 rounded-lg hover:bg-gray-50 text-gray-500"
                                   >
-                                    Approve
+                                    <Edit2 className="w-4 h-4" />
                                   </button>
                                   <button
-                                    onClick={() => openReject(r.id)}
-                                    className="px-3 py-1 rounded-lg bg-red-50 text-red-600 text-sm"
+                                    onClick={() => cancelAppointment(a.id)}
+                                    className="p-2 rounded-lg hover:bg-gray-50 text-red-500"
                                   >
-                                    Reject
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </td>
                             </tr>
                           ))}
-                      </tbody>
-                    </table>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
 
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h4 className="font-bold mb-4">Request Pipeline</h4>
-                  <div className="space-y-3">
-                    <DragDropContext onDragEnd={onDragEndRequest}>
-                      {Object.values(requestColumns).map((col) => (
-                        <Droppable key={col.id} droppableId={col.id}>
-                          {(provided) => (
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h4 className="font-bold mb-3">Calendar</h4>
+                    <div className="grid grid-cols-7 gap-1 text-xs text-center">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                        (d) => (
+                          <div key={d} className="py-1 text-gray-500">
+                            {d}
+                          </div>
+                        )
+                      )}
+                      {calendar.map((day) => {
+                        const key = format(day, "yyyy-MM-dd");
+                        const count = appointmentCountsByDay[key] || 0;
+                        const inMonth = isSameMonth(day, today);
+                        return (
+                          <div
+                            key={key}
+                            className={`p-2 rounded ${isSameDay(day, new Date()) ? "bg-red-50" : ""
+                              }`}
+                          >
                             <div
-                              ref={provided.innerRef}
-                              {...provided.droppableProps}
-                              className="mb-3"
+                              className={`${inMonth ? "text-gray-700" : "text-gray-300"
+                                } text-xs`}
                             >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-semibold text-sm">
-                                  {col.title}
-                                </span>
-                                <span className="text-xs text-gray-400">
-                                  {col.items.length}
-                                </span>
-                              </div>
-                              <div className="p-2 bg-gray-50 rounded space-y-2 min-h-[80px]">
-                                {col.items.map((rid, idx) => {
-                                  const r = (requests || []).find(
-                                    (x) => x.id === rid
-                                  );
-                                  if (!r) return null;
-                                  return (
-                                    <Draggable
-                                      key={rid}
-                                      draggableId={rid}
-                                      index={idx}
-                                    >
-                                      {(pr) => (
-                                        <div
-                                          ref={pr.innerRef}
-                                          {...pr.draggableProps}
-                                          {...pr.dragHandleProps}
-                                          className="bg-white rounded p-2 shadow-sm flex items-center justify-between"
-                                        >
-                                          <div>
-                                            <p className="text-sm font-medium">
-                                              {r.hospital}
-                                            </p>
-                                            <p className="text-xs text-gray-400">
-                                              {r.group} • {r.units} U
-                                            </p>
-                                          </div>
-                                          <div className="text-xs text-gray-500">
-                                            {r.urgency}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </Draggable>
-                                  );
-                                })}
-                                {provided.placeholder}
-                              </div>
+                              {format(day, "d")}
                             </div>
-                          )}
-                        </Droppable>
+                            {count > 0 && (
+                              <div className="mt-1 text-[10px] font-semibold text-white bg-red-600 rounded-full w-6 h-6 mx-auto flex items-center justify-center">
+                                {count}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Requests */}
+            {activePage === "Requests" && (
+              <>
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-800">
+                      Blood Requests
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Manage hospital and external requests.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <select
+                      value={requestFilter.group}
+                      onChange={(e) =>
+                        setRequestFilter((s) => ({ ...s, group: e.target.value }))
+                      }
+                      className="px-3 py-2 border rounded-lg"
+                    >
+                      <option>All</option>
+                      {Object.keys(stock).map((g) => (
+                        <option key={g}>{g}</option>
                       ))}
-                    </DragDropContext>
+                    </select>
+                    <select
+                      value={requestFilter.status}
+                      onChange={(e) =>
+                        setRequestFilter((s) => ({
+                          ...s,
+                          status: e.target.value,
+                        }))
+                      }
+                      className="px-3 py-2 border rounded-lg"
+                    >
+                      <option>All</option>
+                      <option>Pending</option>
+                      <option>Approved</option>
+                      <option>Rejected</option>
+                      <option>Fulfilled</option>
+                    </select>
+                    <button
+                      onClick={() => setShowAddRequestModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg"
+                    >
+                      <Plus className="w-4 h-4" /> New Request
+                    </button>
                   </div>
-                </div>
-              </div>
-            </>
-          )}
+                </section>
 
-          {/* Stock */}
-          {activePage === "Stock" && <StockView />}
-
-          {/* Reports */}
-          {activePage === "Reports" && <ReportsView />}
-
-          {/* Notifications */}
-          {activePage === "Notifications" && <BroadcastView />}
-
-          {/* Alerts */}
-          {activePage === "Alerts" && <AlertsView />}
-
-          {/* Users */}
-          {activePage === "Users" && <UsersTable />}
-
-          {/* Settings */}
-          {activePage === "Settings" && (
-            <>
-              <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6">
-                <h3 className="text-lg font-bold text-gray-800">Settings</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Profile, system preferences and user roles.
-                </p>
-              </section>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h4 className="font-bold mb-3">Profile</h4>
-                  <label className="text-xs text-gray-500">Name</label>
-                  <input
-                    className="w-full mb-3 px-3 py-2 border rounded-lg"
-                    value={settings.profile.name}
-                    onChange={(e) =>
-                      setSettings((s) => ({
-                        ...s,
-                        profile: { ...s.profile, name: e.target.value },
-                      }))
-                    }
-                  />
-                  <label className="text-xs text-gray-500">Email</label>
-                  <input
-                    className="w-full mb-3 px-3 py-2 border rounded-lg"
-                    value={settings.profile.email}
-                    onChange={(e) =>
-                      setSettings((s) => ({
-                        ...s,
-                        profile: { ...s.profile, email: e.target.value },
-                      }))
-                    }
-                  />
-                  <button
-                    onClick={() => alert("Profile saved (frontend only)")}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg"
-                  >
-                    Save Profile
-                  </button>
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h4 className="font-bold mb-3">System</h4>
-                  <label className="text-xs text-gray-500">
-                    Low stock threshold (units)
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.threshold}
-                    onChange={(e) =>
-                      setSettings((s) => ({
-                        ...s,
-                        threshold: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full mb-3 px-3 py-2 border rounded-lg"
-                  />
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-sm font-medium">
-                        Low stock notifications
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        Send alerts when stock goes below threshold
-                      </p>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead className="bg-gray-50/50">
+                          <tr>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Request
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Group
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Units
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Urgency
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                              Status
+                            </th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {requests
+                            .filter(
+                              (r) =>
+                                (requestFilter.group === "All"
+                                  ? true
+                                  : r.group === requestFilter.group) &&
+                                (requestFilter.status === "All"
+                                  ? true
+                                  : r.status === requestFilter.status)
+                            )
+                            .map((r) => (
+                              <tr
+                                key={r.id}
+                                className="hover:bg-gray-50 transition-colors"
+                              >
+                                <td className="px-4 py-3">
+                                  <div>
+                                    <p className="font-medium">{r.hospital}</p>
+                                    <p className="text-xs text-gray-400">
+                                      {r.contact}
+                                    </p>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm">{r.group}</td>
+                                <td className="px-4 py-3 text-sm">{r.units}</td>
+                                <td className="px-4 py-3 text-sm">{r.urgency}</td>
+                                <td className="px-4 py-3">
+                                  <span
+                                    className={`px-2 py-1 rounded-full text-xs ${r.status === "Pending"
+                                      ? "bg-yellow-50 text-yellow-700"
+                                      : r.status === "Approved"
+                                        ? "bg-green-50 text-green-700"
+                                        : "bg-red-50 text-red-700"
+                                      }`}
+                                  >
+                                    {r.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      onClick={() => approveRequest(r.id)}
+                                      className="px-3 py-1 rounded-lg bg-green-600 text-white text-sm"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => openReject(r.id)}
+                                      className="px-3 py-1 rounded-lg bg-red-50 text-red-600 text-sm"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
                     </div>
-                    <label className="inline-flex relative items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={settings.notifications.lowStock}
-                        onChange={(e) =>
-                          setSettings((s) => ({
-                            ...s,
-                            notifications: {
-                              ...s.notifications,
-                              lowStock: e.target.checked,
-                            },
-                          }))
-                        }
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-10 h-5 rounded-full transition ${settings.notifications.lowStock
-                          ? "bg-green-500"
-                          : "bg-gray-300"
-                          }`}
-                      ></div>
-                    </label>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">
-                        Auto-approve requests
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        Automatically approve requests when stock is sufficient
-                      </p>
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h4 className="font-bold mb-4">Request Pipeline</h4>
+                    <div className="space-y-3">
+                      <DragDropContext onDragEnd={onDragEndRequest}>
+                        {Object.values(requestColumns).map((col) => (
+                          <Droppable key={col.id} droppableId={col.id}>
+                            {(provided) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.droppableProps}
+                                className="mb-3"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-semibold text-sm">
+                                    {col.title}
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    {col.items.length}
+                                  </span>
+                                </div>
+                                <div className="p-2 bg-gray-50 rounded space-y-2 min-h-[80px]">
+                                  {col.items.map((rid, idx) => {
+                                    const r = (requests || []).find(
+                                      (x) => x.id === rid
+                                    );
+                                    if (!r) return null;
+                                    return (
+                                      <Draggable
+                                        key={rid}
+                                        draggableId={rid}
+                                        index={idx}
+                                      >
+                                        {(pr) => (
+                                          <div
+                                            ref={pr.innerRef}
+                                            {...pr.draggableProps}
+                                            {...pr.dragHandleProps}
+                                            className="bg-white rounded p-2 shadow-sm flex items-center justify-between"
+                                          >
+                                            <div>
+                                              <p className="text-sm font-medium">
+                                                {r.hospital}
+                                              </p>
+                                              <p className="text-xs text-gray-400">
+                                                {r.group} • {r.units} U
+                                              </p>
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                              {r.urgency}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </Draggable>
+                                    );
+                                  })}
+                                  {provided.placeholder}
+                                </div>
+                              </div>
+                            )}
+                          </Droppable>
+                        ))}
+                      </DragDropContext>
                     </div>
-                    <label className="inline-flex relative items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={settings.autoApprove}
-                        onChange={(e) =>
-                          setSettings((s) => ({
-                            ...s,
-                            autoApprove: e.target.checked,
-                          }))
-                        }
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-10 h-5 rounded-full transition ${settings.autoApprove ? "bg-green-500" : "bg-gray-300"
-                          }`}
-                      ></div>
-                    </label>
                   </div>
                 </div>
+              </>
+            )}
 
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h4 className="font-bold mb-3">Roles & Permissions</h4>
-                  <p className="text-sm text-gray-500 mb-3">
-                    Quick manage user roles
+            {/* Stock */}
+            {activePage === "Stock" && <StockView />}
+
+            {/* Reports */}
+            {activePage === "Reports" && <ReportsView />}
+
+            {/* Notifications */}
+            {activePage === "Notifications" && <BroadcastView />}
+
+            {/* Alerts */}
+            {activePage === "Alerts" && <AlertsView />}
+
+            {/* Users */}
+            {activePage === "Users" && <UsersTable />}
+
+            {/* Settings */}
+            {activePage === "Settings" && (
+              <>
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 p-6">
+                  <h3 className="text-lg font-bold text-gray-800">Settings</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Profile, system preferences and user roles.
                   </p>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                </section>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h4 className="font-bold mb-3">Profile</h4>
+                    <label className="text-xs text-gray-500">Name</label>
+                    <input
+                      className="w-full mb-3 px-3 py-2 border rounded-lg"
+                      value={settings.profile.name}
+                      onChange={(e) =>
+                        setSettings((s) => ({
+                          ...s,
+                          profile: { ...s.profile, name: e.target.value },
+                        }))
+                      }
+                    />
+                    <label className="text-xs text-gray-500">Email</label>
+                    <input
+                      className="w-full mb-3 px-3 py-2 border rounded-lg"
+                      value={settings.profile.email}
+                      onChange={(e) =>
+                        setSettings((s) => ({
+                          ...s,
+                          profile: { ...s.profile, email: e.target.value },
+                        }))
+                      }
+                    />
+                    <button
+                      onClick={() => alert("Profile saved (frontend only)")}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg"
+                    >
+                      Save Profile
+                    </button>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h4 className="font-bold mb-3">System</h4>
+                    <label className="text-xs text-gray-500">
+                      Low stock threshold (units)
+                    </label>
+                    <input
+                      type="number"
+                      value={settings.threshold}
+                      onChange={(e) =>
+                        setSettings((s) => ({
+                          ...s,
+                          threshold: Number(e.target.value),
+                        }))
+                      }
+                      className="w-full mb-3 px-3 py-2 border rounded-lg"
+                    />
+                    <div className="flex items-center justify-between mb-3">
                       <div>
-                        <p className="font-medium">Add Admin</p>
+                        <p className="text-sm font-medium">
+                          Low stock notifications
+                        </p>
                         <p className="text-xs text-gray-400">
-                          Create a new admin user
+                          Send alerts when stock goes below threshold
                         </p>
                       </div>
-                      <button className="px-3 py-1 rounded bg-indigo-600 text-white text-sm">
-                        Add
-                      </button>
+                      <label className="inline-flex relative items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.notifications.lowStock}
+                          onChange={(e) =>
+                            setSettings((s) => ({
+                              ...s,
+                              notifications: {
+                                ...s.notifications,
+                                lowStock: e.target.checked,
+                              },
+                            }))
+                          }
+                          className="sr-only"
+                        />
+                        <div
+                          className={`w-10 h-5 rounded-full transition ${settings.notifications.lowStock
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                            }`}
+                        ></div>
+                      </label>
                     </div>
+
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">Manage Roles</p>
+                        <p className="text-sm font-medium">
+                          Auto-approve requests
+                        </p>
                         <p className="text-xs text-gray-400">
-                          Assign permissions to users
+                          Automatically approve requests when stock is sufficient
                         </p>
                       </div>
-                      <button className="px-3 py-1 rounded bg-indigo-50 text-indigo-600 text-sm">
-                        Open
-                      </button>
+                      <label className="inline-flex relative items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.autoApprove}
+                          onChange={(e) =>
+                            setSettings((s) => ({
+                              ...s,
+                              autoApprove: e.target.checked,
+                            }))
+                          }
+                          className="sr-only"
+                        />
+                        <div
+                          className={`w-10 h-5 rounded-full transition ${settings.autoApprove ? "bg-green-500" : "bg-gray-300"
+                            }`}
+                        ></div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h4 className="font-bold mb-3">Roles & Permissions</h4>
+                    <p className="text-sm text-gray-500 mb-3">
+                      Quick manage user roles
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">Add Admin</p>
+                          <p className="text-xs text-gray-400">
+                            Create a new admin user
+                          </p>
+                        </div>
+                        <button className="px-3 py-1 rounded bg-indigo-600 text-white text-sm">
+                          Add
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">Manage Roles</p>
+                          <p className="text-xs text-gray-400">
+                            Assign permissions to users
+                          </p>
+                        </div>
+                        <button className="px-3 py-1 rounded bg-indigo-50 text-indigo-600 text-sm">
+                          Open
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </>
-          )}
-        </div>
-      </main>
-
-      {/* ---------- MODALS ---------- */}
-
-      {/* Add Appointment */}
-      {showAddAppointmentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-bold mb-4">Add Appointment</h3>
-            <label className="text-xs text-gray-500">Donor Name</label>
-            <input
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newAppointment.name}
-              onChange={(e) =>
-                setNewAppointment((s) => ({ ...s, name: e.target.value }))
-              }
-            />
-            <label className="text-xs text-gray-500">Blood Group</label>
-            <select
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newAppointment.group}
-              onChange={(e) =>
-                setNewAppointment((s) => ({ ...s, group: e.target.value }))
-              }
-            >
-              {Object.keys(stock).map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-            <label className="text-xs text-gray-500">Date</label>
-            <input
-              type="date"
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newAppointment.date}
-              onChange={(e) =>
-                setNewAppointment((s) => ({ ...s, date: e.target.value }))
-              }
-            />
-            <label className="text-xs text-gray-500">Time</label>
-            <input
-              type="time"
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newAppointment.time}
-              onChange={(e) =>
-                setNewAppointment((s) => ({ ...s, time: e.target.value }))
-              }
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 rounded-lg border"
-                onClick={() => setShowAddAppointmentModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg bg-red-600 text-white"
-                onClick={createAppointment}
-              >
-                Add
-              </button>
-            </div>
+              </>
+            )}
           </div>
-        </div>
-      )}
+        </main>
 
-      {/* Add Request */}
-      {showAddRequestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-bold mb-4">Create Request</h3>
-            <label className="text-xs text-gray-500">
-              Hospital / Requester
-            </label>
-            <input
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newRequest.hospital}
-              onChange={(e) =>
-                setNewRequest((s) => ({ ...s, hospital: e.target.value }))
-              }
-            />
-            <label className="text-xs text-gray-500">Blood Group</label>
-            <select
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newRequest.group}
-              onChange={(e) =>
-                setNewRequest((s) => ({ ...s, group: e.target.value }))
-              }
-            >
-              {Object.keys(stock).map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-            <label className="text-xs text-gray-500">Units Needed</label>
-            <input
-              type="number"
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newRequest.units}
-              onChange={(e) =>
-                setNewRequest((s) => ({ ...s, units: Number(e.target.value) }))
-              }
-            />
-            <label className="text-xs text-gray-500">Urgency</label>
-            <select
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newRequest.urgency}
-              onChange={(e) =>
-                setNewRequest((s) => ({ ...s, urgency: e.target.value }))
-              }
-            >
-              <option>Normal</option>
-              <option>High</option>
-              <option>Critical</option>
-            </select>
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 rounded-lg border"
-                onClick={() => setShowAddRequestModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg bg-indigo-600 text-white"
-                onClick={createRequest}
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        {/* ---------- MODALS ---------- */}
 
-      {/* Stock Edit */}
-      {showAddStockModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-bold mb-4">Adjust Stock</h3>
-            <label className="text-xs text-gray-500">Group</label>
-            <select
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={stockEdit.group}
-              onChange={(e) =>
-                setStockEdit((s) => ({ ...s, group: e.target.value }))
-              }
-            >
-              {Object.keys(stock).map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-            <label className="text-xs text-gray-500">
-              Change (positive = add, negative = remove)
-            </label>
-            <input
-              type="number"
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={stockEdit.change}
-              onChange={(e) =>
-                setStockEdit((s) => ({ ...s, change: Number(e.target.value) }))
-              }
-            />
-            <label className="text-xs text-gray-500">Reason</label>
-            <select
-              className="w-full mb-4 px-3 py-2 border rounded-lg"
-              value={stockEdit.reason}
-              onChange={(e) =>
-                setStockEdit((s) => ({ ...s, reason: e.target.value }))
-              }
-            >
-              <option>Donation</option>
-              <option>Hospital Request</option>
-              <option>Expiry</option>
-              <option>Testing</option>
-            </select>
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 rounded-lg border"
-                onClick={() => setShowAddStockModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg bg-indigo-600 text-white"
-                onClick={submitStockChange}
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reject Request */}
-      {showRejectModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-bold mb-4">Reject Request</h3>
-            <label className="text-xs text-gray-500">Reason</label>
-            <textarea
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 rounded-lg border"
-                onClick={() =>
-                  setShowRejectModal({ open: false, requestId: null })
+        {/* Add Appointment */}
+        {showAddAppointmentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+            <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+              <h3 className="text-lg font-bold mb-4">Add Appointment</h3>
+              <label className="text-xs text-gray-500">Donor Name</label>
+              <input
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newAppointment.name}
+                onChange={(e) =>
+                  setNewAppointment((s) => ({ ...s, name: e.target.value }))
+                }
+              />
+              <label className="text-xs text-gray-500">Blood Group</label>
+              <select
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newAppointment.group}
+                onChange={(e) =>
+                  setNewAppointment((s) => ({ ...s, group: e.target.value }))
                 }
               >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg bg-red-600 text-white"
-                onClick={handleReject}
-              >
-                Reject
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add User */}
-      {showAddUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-bold mb-4">Add User</h3>
-            <label className="text-xs text-gray-500">Name</label>
-            <input
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newUser.name}
-              onChange={(e) =>
-                setNewUser((s) => ({ ...s, name: e.target.value }))
-              }
-            />
-            <label className="text-xs text-gray-500">Email</label>
-            <input
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newUser.email}
-              onChange={(e) =>
-                setNewUser((s) => ({ ...s, email: e.target.value }))
-              }
-            />
-            <label className="text-xs text-gray-500">Role</label>
-            <select
-              className="w-full mb-3 px-3 py-2 border rounded-lg"
-              value={newUser.role}
-              onChange={(e) =>
-                setNewUser((s) => ({ ...s, role: e.target.value }))
-              }
-            >
-              <option>Donor</option>
-              <option>Volunteer</option>
-              <option>Admin</option>
-            </select>
-            <label className="text-xs text-gray-500">Status</label>
-            <select
-              className="w-full mb-4 px-3 py-2 border rounded-lg"
-              value={newUser.status}
-              onChange={(e) =>
-                setNewUser((s) => ({ ...s, status: e.target.value }))
-              }
-            >
-              <option>Active</option>
-              <option>Offline</option>
-              <option>Pending</option>
-            </select>
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 rounded-lg border"
-                onClick={() => setShowAddUserModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg bg-indigo-600 text-white"
-                onClick={handleAddUser}
-              >
-                Add User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* New Donation Modal */}
-      {showAddDonationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-800">Register New Donor</h3>
-              <p className="text-sm text-gray-500 mt-1">Add a new donor to the donation pipeline</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Donor Name *</label>
-                <input
-                  type="text"
-                  value={newDonation.donorName}
-                  onChange={(e) => setNewDonation({ ...newDonation, donorName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
-                  placeholder="John Doe"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
-                <select
-                  value={newDonation.bloodGroup}
-                  onChange={(e) => setNewDonation({ ...newDonation, bloodGroup: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                {Object.keys(stock).map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+              <label className="text-xs text-gray-500">Date</label>
+              <input
+                type="date"
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newAppointment.date}
+                onChange={(e) =>
+                  setNewAppointment((s) => ({ ...s, date: e.target.value }))
+                }
+              />
+              <label className="text-xs text-gray-500">Time</label>
+              <input
+                type="time"
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newAppointment.time}
+                onChange={(e) =>
+                  setNewAppointment((s) => ({ ...s, time: e.target.value }))
+                }
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-4 py-2 rounded-lg border"
+                  onClick={() => setShowAddAppointmentModal(false)}
                 >
-                  {Object.keys(stock).map((group) => (
-                    <option key={group} value={group}>{group}</option>
-                  ))}
-                </select>
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white"
+                  onClick={createAppointment}
+                >
+                  Add
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <input
-                  type="tel"
-                  value={newDonation.phone}
-                  onChange={(e) => setNewDonation({ ...newDonation, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
-                  placeholder="1234567890"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                <input
-                  type="email"
-                  value={newDonation.email}
-                  onChange={(e) => setNewDonation({ ...newDonation, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
-                  placeholder="john@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                <textarea
-                  value={newDonation.notes}
-                  onChange={(e) => setNewDonation({ ...newDonation, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
-                  rows="3"
-                  placeholder="First time donor, no medical history..."
-                />
-              </div>
-            </div>
-            <div className="p-6 bg-gray-50 flex justify-end gap-3">
-              <button
-                onClick={() => setShowAddDonationModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddDonation}
-                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
-              >
-                Register Donor
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Add Request */}
+        {showAddRequestModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+            <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+              <h3 className="text-lg font-bold mb-4">Create Request</h3>
+              <label className="text-xs text-gray-500">
+                Hospital / Requester
+              </label>
+              <input
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newRequest.hospital}
+                onChange={(e) =>
+                  setNewRequest((s) => ({ ...s, hospital: e.target.value }))
+                }
+              />
+              <label className="text-xs text-gray-500">Blood Group</label>
+              <select
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newRequest.group}
+                onChange={(e) =>
+                  setNewRequest((s) => ({ ...s, group: e.target.value }))
+                }
+              >
+                {Object.keys(stock).map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+              <label className="text-xs text-gray-500">Units Needed</label>
+              <input
+                type="number"
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newRequest.units}
+                onChange={(e) =>
+                  setNewRequest((s) => ({ ...s, units: Number(e.target.value) }))
+                }
+              />
+              <label className="text-xs text-gray-500">Urgency</label>
+              <select
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newRequest.urgency}
+                onChange={(e) =>
+                  setNewRequest((s) => ({ ...s, urgency: e.target.value }))
+                }
+              >
+                <option>Normal</option>
+                <option>High</option>
+                <option>Critical</option>
+              </select>
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-4 py-2 rounded-lg border"
+                  onClick={() => setShowAddRequestModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white"
+                  onClick={createRequest}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stock Edit */}
+        {showAddStockModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+            <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+              <h3 className="text-lg font-bold mb-4">Adjust Stock</h3>
+              <label className="text-xs text-gray-500">Group</label>
+              <select
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={stockEdit.group}
+                onChange={(e) =>
+                  setStockEdit((s) => ({ ...s, group: e.target.value }))
+                }
+              >
+                {Object.keys(stock).map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+              <label className="text-xs text-gray-500">
+                Change (positive = add, negative = remove)
+              </label>
+              <input
+                type="number"
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={stockEdit.change}
+                onChange={(e) =>
+                  setStockEdit((s) => ({ ...s, change: Number(e.target.value) }))
+                }
+              />
+              <label className="text-xs text-gray-500">Reason</label>
+              <select
+                className="w-full mb-4 px-3 py-2 border rounded-lg"
+                value={stockEdit.reason}
+                onChange={(e) =>
+                  setStockEdit((s) => ({ ...s, reason: e.target.value }))
+                }
+              >
+                <option>Donation</option>
+                <option>Hospital Request</option>
+                <option>Expiry</option>
+                <option>Testing</option>
+              </select>
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-4 py-2 rounded-lg border"
+                  onClick={() => setShowAddStockModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white"
+                  onClick={submitStockChange}
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reject Request */}
+        {showRejectModal.open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+            <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+              <h3 className="text-lg font-bold mb-4">Reject Request</h3>
+              <label className="text-xs text-gray-500">Reason</label>
+              <textarea
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-4 py-2 rounded-lg border"
+                  onClick={() =>
+                    setShowRejectModal({ open: false, requestId: null })
+                  }
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white"
+                  onClick={handleReject}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add User */}
+        {showAddUserModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+            <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+              <h3 className="text-lg font-bold mb-4">Add User</h3>
+              <label className="text-xs text-gray-500">Name</label>
+              <input
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newUser.name}
+                onChange={(e) =>
+                  setNewUser((s) => ({ ...s, name: e.target.value }))
+                }
+              />
+              <label className="text-xs text-gray-500">Email</label>
+              <input
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newUser.email}
+                onChange={(e) =>
+                  setNewUser((s) => ({ ...s, email: e.target.value }))
+                }
+              />
+              <label className="text-xs text-gray-500">Role</label>
+              <select
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                value={newUser.role}
+                onChange={(e) =>
+                  setNewUser((s) => ({ ...s, role: e.target.value }))
+                }
+              >
+                <option>Donor</option>
+                <option>Volunteer</option>
+                <option>Admin</option>
+              </select>
+              <label className="text-xs text-gray-500">Status</label>
+              <select
+                className="w-full mb-4 px-3 py-2 border rounded-lg"
+                value={newUser.status}
+                onChange={(e) =>
+                  setNewUser((s) => ({ ...s, status: e.target.value }))
+                }
+              >
+                <option>Active</option>
+                <option>Offline</option>
+                <option>Pending</option>
+              </select>
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-4 py-2 rounded-lg border"
+                  onClick={() => setShowAddUserModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white"
+                  onClick={handleAddUser}
+                >
+                  Add User
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* New Donation Modal */}
+        {showAddDonationModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800">Register New Donor</h3>
+                <p className="text-sm text-gray-500 mt-1">Add a new donor to the donation pipeline</p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Donor Name *</label>
+                  <input
+                    type="text"
+                    value={newDonation.donorName}
+                    onChange={(e) => setNewDonation({ ...newDonation, donorName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                    placeholder="John Doe"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
+                  <select
+                    value={newDonation.bloodGroup}
+                    onChange={(e) => setNewDonation({ ...newDonation, bloodGroup: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                  >
+                    {Object.keys(stock).map((group) => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={newDonation.phone}
+                    onChange={(e) => setNewDonation({ ...newDonation, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                    placeholder="1234567890"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={newDonation.email}
+                    onChange={(e) => setNewDonation({ ...newDonation, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                    placeholder="john@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <textarea
+                    value={newDonation.notes}
+                    onChange={(e) => setNewDonation({ ...newDonation, notes: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+                    rows="3"
+                    placeholder="First time donor, no medical history..."
+                  />
+                </div>
+              </div>
+              <div className="p-6 bg-gray-50 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowAddDonationModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddDonation}
+                  className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
+                >
+                  Register Donor
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <Footer role="admin" />
+      </div>
     </div>
   );
 };
