@@ -1,0 +1,129 @@
+﻿
+> blood-donation@0.0.0 build
+> vite build
+
+[36mvite v7.2.2 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 56 modules transformed.
+node.exe : 
+[31mΓ£ù[39m Build 
+failed in 708ms
+At C:\Program Files\n
+odejs\npm.ps1:29 
+char:3
++   & $NODE_EXE 
+$NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: ([31mΓ£   
+ ù[39m Build fai    
+led in 708ms:Str    
+ing) [], RemoteE    
+xception
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+[31merror during 
+build:
+[31m[vite:esbuild] 
+Transform failed 
+with 1 error:
+D:/booddonation/Blood
+Donation  
+Project/New folder/Pr
+ojectBlood/Client/src
+/component/Orgdashboa
+rd/BloodBankDonationP
+ipeline.jsx:957:53: 
+ERROR: Expected ";" 
+but found ":"[31m
+file: [36mD:/booddon
+ation/BloodDonation  
+Project/New folder/Pr
+ojectBlood/Client/src
+/component/Orgdashboa
+rd/BloodBankDonationP
+ipeline.jsx:957:53[3
+1m
+[33m
+[33mExpected ";" 
+but found ":"[33m
+955 |                
+              } else 
+if 
+(donation.fromCamp) {
+956 |                
+                     
+ campId: 
+donation.campId,
+957 |                
+                     
+ campParticipantId: d
+onation.campParticipa
+ntId,
+    |                
+                     
+                  ^
+958 |                
+                     
+ donorId: 
+donation.donorId
+959 |                
+                  });
+[31m
+    at 
+failureErrorWithLog (
+D:\booddonation\Blood
+Donation  
+Project\New folder\Pr
+ojectBlood\Client\nod
+e_modules\esbuild\lib
+\main.js:1467:15)
+    at D:\booddonatio
+n\BloodDonation  
+Project\New folder\Pr
+ojectBlood\Client\nod
+e_modules\esbuild\lib
+\main.js:736:50
+    at responseCallba
+cks.<computed> (D:\bo
+oddonation\BloodDonat
+ion  Project\New fold
+er\ProjectBlood\Clien
+t\node_modules\esbuil
+d\lib\main.js:603:9)
+    at 
+handleIncomingPacket 
+(D:\booddonation\Bloo
+dDonation  
+Project\New folder\Pr
+ojectBlood\Client\nod
+e_modules\esbuild\lib
+\main.js:658:12)
+    at Socket.readFro
+mStdout (D:\booddonat
+ion\BloodDonation  
+Project\New folder\Pr
+ojectBlood\Client\nod
+e_modules\esbuild\lib
+\main.js:581:7)
+    at Socket.emit 
+(node:events:524:28)
+    at addChunk (node
+:internal/streams/rea
+dable:561:12)
+    at readableAddChu
+nkPushByteMode (node:
+internal/streams/read
+able:512:3)
+    at Readable.push 
+(node:internal/stream
+s/readable:392:5)
+    at 
+Pipe.onStreamRead (no
+de:internal/stream_ba
+se_commons:189:23)[3
+9m

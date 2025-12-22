@@ -164,12 +164,6 @@ const AdminDashboard = () => {
     setActiveSide(page);
   }, [location.pathname]);
 
-  // Debug: Log component render
-  useEffect(() => {
-      activePage,
-      location: location.pathname,
-    });
-  }, [activePage, location.pathname]);
 
   // modals & forms
   const [showAddAppointmentModal, setShowAddAppointmentModal] = useState(false);
@@ -668,10 +662,8 @@ const AdminDashboard = () => {
     { label: "Settings", icon: Settings },
   ];
 
-  // Render
-    activePage,
-    stockKeys: Object.keys(stock || {}).length,
-  });
+
+
 
   // Ensure we have default values to prevent null errors
   const safeStock = stock || {};

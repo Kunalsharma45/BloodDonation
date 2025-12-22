@@ -953,11 +953,6 @@ const BloodBankDonationPipeline = () => {
                                     }
                                 }
                             } else if (donation.fromCamp) {
-                                    campId: donation.campId,
-                                    campParticipantId: donation.campParticipantId,
-                                    donorId: donation.donorId
-                                });
-
                                 // Create donation record for camp participant
                                 const donationData = {
                                     donorName: donation.name,
@@ -970,6 +965,7 @@ const BloodBankDonationPipeline = () => {
                                     donorId: donation.donorId,
                                     organizationId: user._id
                                 };
+
 
 
                                 try {
