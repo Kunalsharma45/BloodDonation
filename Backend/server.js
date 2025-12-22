@@ -42,6 +42,10 @@ app.use(["/api/login", "/api/signup"], authLimiter);
 
 connectdb();
 
+app.get("/api/health", (req, res) => {
+    res.status(200).json({ status: "OK" });
+})
+
 // Routes
 app.use("/api", auth);
 app.use("/api", ForgotPassword);

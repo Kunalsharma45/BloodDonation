@@ -159,12 +159,9 @@ const DonorDetailsModal = ({ donation, onClose, onNext }) => {
                     {/* Show Next button only for NEW DONORS stage */}
                     {(() => {
                         // Debug logging
-                        console.log('Donation stage:', donation.stage);
-                        console.log('Current Stage display:', donation.stage?.replace('-', ' '));
 
                         // Show button if stage is 'new-donors' OR if the current stage field shows blank/new donors
                         const shouldShowButton = !donation.stage || donation.stage === 'new-donors' || donation.stage === 'new-donor';
-                        console.log('Should show Next button:', shouldShowButton);
 
                         return shouldShowButton;
                     })() && (

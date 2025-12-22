@@ -5,7 +5,6 @@ import { env } from './config/env.js';
 const connectDB = async () => {
     try {
         await mongoose.connect(env.mongoUri);
-        console.log('✅ Connected to MongoDB');
     } catch (error) {
         console.error('❌ MongoDB connection error:', error);
         process.exit(1);
@@ -21,8 +20,6 @@ const clearAllRequests = async () => {
 
         const result = await Request.deleteMany({});
 
-        console.log(`🗑️  Deleted ${result.deletedCount} blood requests`);
-        console.log('✅ Database cleaned successfully!');
 
         process.exit(0);
     } catch (error) {

@@ -85,17 +85,13 @@ const DonationPipelineTab = () => {
                 adminApi.getDonations().catch(() => ({ 'new-donors': { items: [] }, 'screening': { items: [] }, 'in-progress': { items: [] }, 'completed': { items: [] }, 'ready-storage': { items: [] } }))
             ]);
 
-            console.log('Raw appointments data:', appointmentsData);
 
             // Handle both response formats for appointments
             const appointmentsArray = Array.isArray(appointmentsData)
                 ? appointmentsData
                 : (appointmentsData.appointments || []);
 
-            console.log('Processed appointments array:', appointmentsArray);
 
-            console.log('Processed appointments array length:', appointmentsArray.length);
-            console.log('Donations data response:', donationsData);
 
             // Collect all ids that already have donations to avoid duplicates
             // Handle both grouped object and flat array (though backend returns grouped)
@@ -117,7 +113,6 @@ const DonationPipelineTab = () => {
                 }
             });
 
-            console.log('Existing donation IDs count:', existingDonationIds.size);
 
             // Convert UPCOMING appointments to NEW DONORS
             // User feedback: "user will come in new donar when time is 9"
@@ -132,10 +127,8 @@ const DonationPipelineTab = () => {
                     const apptTime = new Date(apt.dateTime);
                     const isArrived = apptTime <= new Date();
 
-                    console.log(`🔍 Filtering Appt ${aptId}: status=${status}, isUpcoming=${isUpcoming}, notExisting=${notExisting}, isArrived=${isArrived}, donor=${apt.donorId?.Name}`);
 
                     if (notExisting && isUpcoming && !isArrived) {
-                        console.log(`ℹ️ Appt ${aptId} (${apt.donorId?.Name}) scheduled for ${apptTime.toLocaleTimeString()} - will appear in NEW DONORS when the time comes.`);
                     }
 
                     return isUpcoming && notExisting && isArrived;
@@ -159,7 +152,6 @@ const DonationPipelineTab = () => {
                     fromAppointment: true
                 }));
 
-            console.log('Filtered upcoming appointments for pipeline:', upcomingAppointments.length);
 
             // Add isToday flag to all existing donations from backend
             Object.keys(donationsByStage).forEach(stage => {
@@ -415,7 +407,6 @@ const DonationPipelineTab = () => {
 
             // Check if this is an appointment being moved (from NEW DONORS)
             if (movedItem.fromAppointment && source.droppableId === 'new-donors') {
-                console.log('Moving appointment to donation pipeline, creating donation first...');
 
                 // Create a donation record
                 const donationData = {

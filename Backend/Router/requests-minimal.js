@@ -22,9 +22,6 @@ const auth = (req, res, next) => {
 
 // POST /api/requests/org - Create request
 router.post("/org", auth, async (req, res) => {
-    console.log("🔵 Request received to create blood request");
-    console.log("🔵 User:", req.user);
-    console.log("🔵 Body:", req.body);
 
     try {
         const { bloodGroup, unitsNeeded, component, urgency, contactPerson, contactPhone, caseDetails } = req.body;
@@ -38,7 +35,6 @@ router.post("/org", auth, async (req, res) => {
             return res.status(404).json({ message: "Organization not found" });
         }
 
-        console.log("✅ Org found:", org.organizationName);
 
         const newRequest = new Request({
             organizationId: req.user.userId,
@@ -60,7 +56,6 @@ router.post("/org", auth, async (req, res) => {
         });
 
         await newRequest.save();
-        console.log("✅ Request created:", newRequest._id);
 
         res.status(201).json({ message: "Success", request: newRequest });
     } catch (error) {

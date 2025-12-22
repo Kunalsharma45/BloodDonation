@@ -41,11 +41,7 @@ const NearbyRequests = () => {
         group: filters.group || undefined,
       };
       const res = await client.get("/api/donor/requests/nearby", { params });
-      console.log('🔍 API Response:', res.data);
-      console.log('🔍 Requests from API:', res.data.requests);
-      console.log('🔍 Requests length:', res.data.requests?.length);
       setRequests(res.data.requests || []);
-      console.log('✅ Set requests to state');
       setEligibleInfo({ eligible: res.data.eligible, nextEligibleDate: res.data.nextEligibleDate });
     } catch (err) {
       console.error(err);
@@ -247,7 +243,6 @@ const NearbyRequests = () => {
       )}
 
       {/* Debug log */}
-      {console.log('🎨 Rendering, requests.length:', requests.length, 'requests:', requests)}
 
       {/* Details modal */}
       {selected && (

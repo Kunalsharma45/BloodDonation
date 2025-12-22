@@ -10,7 +10,6 @@ dotenv.config({ path: join(__dirname, '.env') });
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('MongoDB Connected'))
     .catch(err => console.error(err));
 
 // Note: Using dynamic imports or defining schemas inline to avoid module issues
@@ -38,7 +37,6 @@ const Request = mongoose.model('Request', requestSchema);
 
 async function fixData() {
     try {
-        console.log('Finding completed donations...');
         const donations = await Donation.find({
             $or: [
                 { stage: 'ready-storage' },
@@ -47,30 +45,24 @@ async function fixData() {
             appointmentId: { $ne: null }
         });
 
-        console.log(`Found ${donations.length} candidate donations.`);
 
         for (const donation of donations) {
             if (donation.appointmentId) {
-                console.log(`Checking appointment ${donation.appointmentId}...`);
                 const appt = await Appointment.findById(donation.appointmentId);
 
                 if (appt && appt.status !== 'COLLECTED') {
-                    console.log(`Updating appointment ${appt._id} to COLLECTED`);
                     appt.status = 'COLLECTED';
                     appt.completedAt = new Date();
                     await appt.save();
-                    console.log('✅ Updated.');
 
                     // Also check for request fulfillment
                     // Note: Appointment schema in this script is simplified, so we might miss requestId unless we add it
                     // Let's re-fetch with full schema or just use what we have if we add requestId to schema
                 } else {
-                    console.log(`Appointment already COLLECTED or not found.`);
                 }
             }
         }
 
-        console.log('Done!');
         process.exit(0);
     } catch (error) {
         console.error('Error:', error);

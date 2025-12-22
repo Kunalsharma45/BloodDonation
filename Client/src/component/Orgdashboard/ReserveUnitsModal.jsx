@@ -31,10 +31,6 @@ const ReserveUnitsModal = ({ request, isOpen, onClose, onSuccess }) => {
             // Get inventory for the requested blood group
             const response = await orgApi.getInventory();
 
-            console.log('📦 Inventory API Response:', response);
-            console.log('📦 Response type:', typeof response);
-            console.log('📦 Is Array?:', Array.isArray(response));
-            console.log('📦 Response keys:', response ? Object.keys(response) : 'null/undefined');
 
             // Handle multiple possible response formats
             let units = [];
@@ -47,9 +43,6 @@ const ReserveUnitsModal = ({ request, isOpen, onClose, onSuccess }) => {
                 units = response.units || response.data || response.items || [];
             }
 
-            console.log('📦 Units after parsing:', units);
-            console.log('📦 Units length:', units?.length);
-            console.log('📦 Units is array?:', Array.isArray(units));
 
             if (!Array.isArray(units)) {
                 console.error('❌ Units is not an array:', units);
@@ -64,8 +57,6 @@ const ReserveUnitsModal = ({ request, isOpen, onClose, onSuccess }) => {
                 unit?.status === 'AVAILABLE'
             );
 
-            console.log('✅ Matching units:', matching.length);
-            console.log('✅ Matching units details:', matching);
 
             setAvailableUnits(matching);
         } catch (error) {

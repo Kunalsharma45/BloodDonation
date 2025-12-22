@@ -12,10 +12,7 @@ for (const dbName of dbs) {
     const orgs = await users.find({ role: 'organization' }).limit(3).toArray();
 
     if (orgs.length > 0) {
-        console.log(`\n✅ DATABASE: ${dbName}`);
-        console.log(`   Organizations found: ${orgs.length}`);
         orgs.forEach(o => {
-            console.log(`   - ${o.organizationName || o.Name}: ${o.organizationType}, verified=${o.isVerified}`);
         });
     }
 

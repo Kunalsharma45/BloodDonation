@@ -5,7 +5,6 @@ await mongoose.connect('mongodb://localhost:27017/liforce');
 
 const orgId = '6946ff84e5bb59549eb37464';
 
-console.log('🩸 Creating sample fulfilled requests for chart testing...\n');
 
 // Create sample fulfilled requests for different months
 const sampleRequests = [
@@ -31,10 +30,8 @@ for (let i = 0; i < sampleRequests.length; i++) {
         updatedAt: sampleRequests[i].updatedAt, // Important for the graph
         createdAt: sampleRequests[i].updatedAt
     });
-    console.log(`✅ Created ${sampleRequests[i].month}: ${req.unitsNeeded} units - Status: ${req.status}`);
 }
 
-console.log(`\n🎉 Successfully created ${sampleRequests.length} fulfilled requests!`);
 
 // Verify count
 const count = await Request.countDocuments({
@@ -42,7 +39,5 @@ const count = await Request.countDocuments({
     status: 'FULFILLED'
 });
 
-console.log(`\n📊 Total fulfilled requests for org ${orgId}: ${count}`);
-console.log('\n💡 Now refresh your dashboard to see the teal line on the chart!');
 
 await mongoose.connection.close();

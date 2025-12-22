@@ -3,7 +3,6 @@ let authToken = '';
 
 async function safeSignup(user) {
     try {
-        console.log(`Creating user ${user.Email}...`);
         const res = await fetch(`${BASE_URL}/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -11,18 +10,14 @@ async function safeSignup(user) {
         });
         const data = await res.json();
         if (res.ok) {
-            console.log('✅ Signup successful');
         } else {
-            console.log(`ℹ️ Signup info: ${data.message} (Likely already exists)`);
         }
     } catch (err) {
-        console.log(`⚠️ Signup skipped/failed: ${err.message}`);
     }
 }
 
 const tests = {
     donor: async () => {
-        console.log('\n--- Testing Donor Endpoints ---');
         try {
             // 0. Ensure user exists
             await safeSignup({
@@ -37,7 +32,6 @@ const tests = {
             });
 
             // 1. Login
-            console.log('Logging in as donor...');
             const loginRes = await fetch(`${BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -52,7 +46,6 @@ const tests = {
             if (!loginRes.ok) throw new Error(loginData.message || 'Login failed');
 
             authToken = loginData.accessToken;
-            console.log('✅ Login successful');
 
             const headers = {
                 'Authorization': `Bearer ${authToken}`
@@ -61,17 +54,14 @@ const tests = {
             // 2. Get Me
             const meRes = await fetch(`${BASE_URL}/donor/me`, { headers });
             const meData = await meRes.json();
-            console.log(`✅ Get Me: ${meRes.status} (Eligible: ${meData.eligible})`);
 
             // 3. Get Stats
             const statsRes = await fetch(`${BASE_URL}/donor/stats`, { headers });
             const statsData = await statsRes.json();
-            console.log(`✅ Get Stats: ${statsRes.status} (Total: ${statsData.totalDonations})`);
 
             // 4. Get Appointments
             const apptRes = await fetch(`${BASE_URL}/donor/appointments`, { headers });
             const apptData = await apptRes.json();
-            console.log(`✅ Get Appointments: ${apptRes.status} (Count: ${Array.isArray(apptData) ? apptData.length : 'Error'})`);
 
         } catch (err) {
             console.error('❌ Donor Test Failed:', err.message);
@@ -79,7 +69,6 @@ const tests = {
     },
 
     admin: async () => {
-        console.log('\n--- Testing Admin Endpoints ---');
         try {
             // 0. Ensure admin exists (Using a secret key if your signup requires it, assuming standard signup for now or manual)
             // Admin signup usually restricted. I'll assume valid credentials or try to create one if allowed endpoint exists.
@@ -98,7 +87,6 @@ const tests = {
             });
 
             // 1. Login
-            console.log('Logging in as admin...');
             const loginRes = await fetch(`${BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -114,15 +102,12 @@ const tests = {
 
             const token = loginData.accessToken;
             const headers = { 'Authorization': `Bearer ${token}` };
-            console.log('✅ Admin Login successful');
 
             // 2. Get Summary
             const summaryRes = await fetch(`${BASE_URL}/admin/summary`, { headers });
-            console.log(`✅ Get Summary: ${summaryRes.status}`);
 
             // 3. Get Pending Counts
             const pendingRes = await fetch(`${BASE_URL}/admin/pending-counts`, { headers });
-            console.log(`✅ Get Pending Counts: ${pendingRes.status}`);
 
         } catch (err) {
             console.error('❌ Admin Test Failed:', err.message);

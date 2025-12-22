@@ -28,7 +28,6 @@ const Request = mongoose.model('Request', requestSchema);
 async function fixData() {
     try {
         await mongoose.connect(MONGO_URI);
-        console.log('Connected to DB');
 
         // Find completed donations connected to appointments
         const donations = await Donation.find({
@@ -39,7 +38,6 @@ async function fixData() {
             appointmentId: { $ne: null }
         });
 
-        console.log(`Found ${donations.length} completed donations.`);
 
         let fixedCount = 0;
         for (const donation of donations) {
@@ -51,7 +49,6 @@ async function fixData() {
                         appt.status = 'COLLECTED';
                         appt.completedAt = new Date();
                         await appt.save();
-                        console.log(`✅ Fixed Appointment: ${appt._id}`);
                         updated = true;
                         fixedCount++;
                     }
@@ -63,14 +60,12 @@ async function fixData() {
                             req.status = 'FULFILLED';
                             req.fulfilledAt = new Date();
                             await req.save();
-                            console.log(`✅ Fixed Request: ${req._id}`);
                         }
                     }
                 }
             }
         }
 
-        console.log(`Fixed ${fixedCount} appointments.`);
         process.exit(0);
     } catch (error) {
         console.error('Error:', error);

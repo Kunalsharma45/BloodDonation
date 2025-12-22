@@ -23,10 +23,8 @@ const checkPort = (port) => {
 
 checkPort(3000).then(inUse => {
     if (inUse) {
-        console.log("PORT 3000 IS BUSY");
         process.exit(1);
     } else {
-        console.log("PORT 3000 IS FREE");
         process.exit(0);
     }
 });

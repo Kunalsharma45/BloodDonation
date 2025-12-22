@@ -98,9 +98,7 @@ const BloodBankDonationPipeline = () => {
             const donationsData = results[1];
             const campParticipants = isBloodBank ? results[2] : [];
 
-            console.log('Raw appointments data:', appointmentsData);
             if (isBloodBank) {
-                console.log('Camp participants (Blood Bank only):', campParticipants);
             }
 
             // Handle both response formats for appointments
@@ -108,10 +106,7 @@ const BloodBankDonationPipeline = () => {
                 ? appointmentsData
                 : (appointmentsData.appointments || []);
 
-            console.log('Processed appointments array:', appointmentsArray);
 
-            console.log('Processed appointments array length:', appointmentsArray.length);
-            console.log('Donations data response:', donationsData);
 
             // Collect all ids that already have donations to avoid duplicates
             // Handle both grouped object and flat array (though backend returns grouped)
@@ -134,7 +129,6 @@ const BloodBankDonationPipeline = () => {
                 }
             });
 
-            console.log('Existing donation IDs count:', existingDonationIds.size);
 
             // Convert UPCOMING appointments to NEW DONORS
             // User feedback: "user will come in new donar when time is 9"
@@ -149,10 +143,8 @@ const BloodBankDonationPipeline = () => {
                     const apptTime = new Date(apt.dateTime);
                     const isArrived = apptTime <= new Date();
 
-                    console.log(`🔍 Filtering Appt ${aptId}: status=${status}, isUpcoming=${isUpcoming}, notExisting=${notExisting}, isArrived=${isArrived}, donor=${apt.donorId?.Name}`);
 
                     if (notExisting && isUpcoming && !isArrived) {
-                        console.log(`ℹ️ Appt ${aptId} (${apt.donorId?.Name}) scheduled for ${apptTime.toLocaleTimeString()} - will appear in NEW DONORS when the time comes.`);
                     }
 
                     return isUpcoming && notExisting && isArrived;
@@ -176,7 +168,6 @@ const BloodBankDonationPipeline = () => {
                     fromAppointment: true
                 }));
 
-            console.log('Filtered upcoming appointments for pipeline:', upcomingAppointments.length);
 
             // Convert Camp Participants to NEW DONORS (BLOOD BANKS ONLY)
             // This follows the same pattern as appointments in hospital pipeline
@@ -200,7 +191,6 @@ const BloodBankDonationPipeline = () => {
                     isAttended: p.isAttended
                 })) : [];
 
-            console.log('Camp participants for pipeline:', campItems.length);
 
             // Add isToday flag to all existing donations from backend
             Object.keys(donationsByStage).forEach(stage => {
@@ -457,7 +447,6 @@ const BloodBankDonationPipeline = () => {
 
             // Check if this is an appointment or camp participant being moved (from NEW DONORS)
             if ((movedItem.fromAppointment || movedItem.fromCamp) && source.droppableId === 'new-donors') {
-                console.log(`Moving ${movedItem.fromCamp ? 'camp participant' : 'appointment'} to donation pipeline, creating donation first...`);
 
                 // Create a donation record
                 const donationData = {
@@ -928,13 +917,9 @@ const BloodBankDonationPipeline = () => {
                     }}
                     onNext={async (donation) => {
                         try {
-                            console.log('🔵 onNext called with donation:', donation);
-                            console.log('🔵 fromAppointment:', donation.fromAppointment);
-                            console.log('🔵 fromCamp:', donation.fromCamp);
 
                             // Check if this is an appointment (from NEW DONORS)
                             if (donation.fromAppointment) {
-                                console.log('✅ Handling appointment...');
                                 // Create donation record first
                                 const donationData = {
                                     donorName: donation.name,
@@ -968,8 +953,6 @@ const BloodBankDonationPipeline = () => {
                                     }
                                 }
                             } else if (donation.fromCamp) {
-                                console.log('✅ Handling camp participant...');
-                                console.log('Camp data:', {
                                     campId: donation.campId,
                                     campParticipantId: donation.campParticipantId,
                                     donorId: donation.donorId
@@ -988,15 +971,12 @@ const BloodBankDonationPipeline = () => {
                                     organizationId: user._id
                                 };
 
-                                console.log('Creating donation with data:', donationData);
 
                                 try {
                                     const newDonation = await adminApi.createDonation(donationData);
-                                    console.log('Donation created:', newDonation);
                                     const donationId = newDonation._id || newDonation.donation?._id || newDonation.donation?.id || newDonation.id;
 
                                     if (donationId) {
-                                        console.log('Moving to screening with ID:', donationId);
                                         // Move to screening
                                         await adminApi.updateDonationStage(donationId, 'screening', user._id);
                                         toast.success('Moved to SCREENING');
@@ -1018,11 +998,8 @@ const BloodBankDonationPipeline = () => {
                                     }
                                 }
                             } else {
-                                console.log('✅ Handling regular donation...');
-                                console.log('Donation object:', donation);
                                 // Regular donation move (for manually added donors)
                                 const donationId = donation.id || donation._id;
-                                console.log('Using donation ID:', donationId);
 
                                 if (!donationId) {
                                     console.error('❌ No donation ID found in donation object');

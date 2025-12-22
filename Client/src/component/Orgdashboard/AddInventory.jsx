@@ -83,7 +83,6 @@ const AddInventory = ({ onAdded }) => {
       setLoading(true);
 
       const quantity = parseInt(form.quantity) || 1;
-      console.log(`🔄 Starting bulk add: ${quantity} units`);
 
       // Create multiple units
       const createdUnits = [];
@@ -95,7 +94,6 @@ const AddInventory = ({ onAdded }) => {
             ? form.barcode
             : generateBarcode(); // Auto-generate unique barcode for each unit
 
-          console.log(`📦 Creating unit ${i + 1}/${quantity} with barcode: ${barcode}`);
 
           const res = await client.post("/api/org/inventory", {
             group: form.group,
@@ -106,7 +104,6 @@ const AddInventory = ({ onAdded }) => {
           });
 
           createdUnits.push(res.data);
-          console.log(`✅ Unit ${i + 1}/${quantity} created successfully:`, res.data._id);
 
           // Small delay to ensure unique timestamps for barcodes
           if (i < quantity - 1) {
@@ -118,7 +115,6 @@ const AddInventory = ({ onAdded }) => {
         }
       }
 
-      console.log(`📊 Bulk add complete: ${createdUnits.length}/${quantity} units created successfully`);
 
       // Clear form only if at least one unit was created
       if (createdUnits.length > 0) {
@@ -126,7 +122,6 @@ const AddInventory = ({ onAdded }) => {
 
         // Notify parent ONCE with all created units
         if (onAdded) {
-          console.log(`🔔 Notifying parent of ${createdUnits.length} new units`);
           // Call onAdded once with all units
           onAdded(createdUnits);
         }
